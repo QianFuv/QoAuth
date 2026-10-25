@@ -34,6 +34,9 @@ func TestBrowserHarness(t *testing.T) {
 	app := store.Application{ID: "browser-rp", Name: "Standard Go RP", Redirects: []string{origin + "/callback"}, LogoutRedirects: []string{origin + "/signed-out"}, Scopes: []string{"openid", "profile", "offline_access"}}
 	secret := test.api("/api/applications/create", map[string]any{"application": app}, 200)["client_secret"].(string)
 	test.api("/api/assignments", map[string]any{"user": test.member, "client": app.ID, "allow": true}, 200)
+	review := store.Application{ID: "new", Name: "Comma callbacks (synthetic)", Public: true, Redirects: []string{"https://rp.example.test/callback?next=one,https://other.example.test/callback"}, LogoutRedirects: []string{"https://rp.example.test/signed-out?next=one,https://other.example.test/signed-out"}, Scopes: []string{"openid"}, Audiences: []string{}}
+	test.api("/api/applications/create", map[string]any{"application": review}, 200)
+	test.api("/api/applications/disable", map[string]string{"client": review.ID}, 200)
 	secretPath := filepath.Join(test.directory, "rp-secret")
 	if err := os.WriteFile(secretPath, []byte(secret), 0600); err != nil {
 		t.Fatal(err)

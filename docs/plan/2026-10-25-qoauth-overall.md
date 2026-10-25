@@ -750,3 +750,12 @@ regressions were rerun. This second implementation shares the OP module and OAut
 dependencies; it is not fully independent. The RP EndSession helper lacks browser
 CSRF/origin confirmation support and is not claimed interoperable. No OIDF suite
 was installed or certification claimed; these are targeted local protocol checks.
+
+C3 review correction under A5: `fix(admin): preserve reviewed callback configuration`
+covers distinct create/review React keys, newline-separated callback/logout textareas,
+matching field styling and a synthetic browser fixture for disabled client ID new.
+Independent review found two P2s: key collision retained an edited draft, and comma
+splitting could expand a literal URL into additional redirects. Browser execution
+confirmed correct review/cancel/remount, no mutation during review, replacement action,
+and exact comma-containing callback/logout values after submit -> disable -> reread.
+TypeScript/Vite build passed. The correction does not widen application permissions.
