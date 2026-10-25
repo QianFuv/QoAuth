@@ -22,7 +22,7 @@ import { IconApps, IconChevronDown, IconChevronUp, IconHistory, IconKey, IconLoc
 import { getJson, postJson, type Account, type Activity, type Application, type SessionState } from "./api";
 import { PasswordField, passwordRule } from "./password-field";
 import { Field, TextField, required, useForm, type FormState } from "./form";
-import { COMPACT_QUERY, formatTime, navigate, useMediaQuery } from "./layout";
+import { COMPACT_QUERY, DRAWER_QUERY, formatTime, navigate, useMediaQuery } from "./layout";
 import { CopyBlock, PageHeader, Panel, StatusView } from "./ui";
 import { splitCommaList, splitLines } from "./validation";
 
@@ -223,7 +223,7 @@ function ApplicationDetails({ application }: { application: Application }) {
 
 /** Applications table with expandable configuration, or stacked cards on small screens. */
 function ApplicationsTable({ apps, busy, onDisable, onReview }: { apps: Application[]; busy: boolean; onDisable: (application: Application) => Promise<void>; onReview: (application: Application) => void }) {
-  const isCompact = useMediaQuery(COMPACT_QUERY);
+  const isCompact = useMediaQuery(DRAWER_QUERY);
   const [openId, setOpenId] = useState("");
   const status = (application: Application) => application.enabled ? <Tag color="green" size="small">启用</Tag> : <Tag color="grey" size="small">已停用</Tag>;
   const action = (application: Application) => application.enabled
