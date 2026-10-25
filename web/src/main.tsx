@@ -7,6 +7,8 @@ import englishLocale from "@douyinfe/semi-ui/lib/es/locale/source/en_US";
 import "@douyinfe/semi-ui/lib/es/_base/base.css";
 import "./style.css";
 
+void import("./fonts");
+
 const Hero = lazy(() => import("./hero").then(module => ({ default: module.Hero })));
 const Portal = lazy(() => import("./portal").then(module => ({ default: module.Portal })));
 const FixtureLogin = lazy(() => import("./fixture").then(module => ({ default: module.FixtureLogin })));

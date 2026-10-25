@@ -6,5 +6,6 @@ export default defineConfig({
     license: { fileName: ".vite/license.json" },
     outDir: "../internal/webassets/dist",
     emptyOutDir: true,
+    assetsInlineLimit: (filePath: string) => (filePath.endsWith(".woff2") ? false : undefined),
   },
 });
