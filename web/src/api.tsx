@@ -1,6 +1,7 @@
 /** Typed browser access to same-origin, session-bound QoAuth endpoints. */
 export interface Account { id: string; username: string; admin: boolean; enabled: boolean; owner: boolean; require_mfa: boolean }
-export interface SessionState { csrf: string; account: Account; authenticated: boolean; assurance: boolean; has_factor: boolean; fresh: boolean }
+export interface PasswordPolicy { min_characters: number; max_bytes: number }
+export interface SessionState { csrf: string; account: Account; authenticated: boolean; assurance: boolean; has_factor: boolean; fresh: boolean; password_policy: PasswordPolicy }
 export interface Application { id: string; name: string; scopes: string[]; audiences: string[]; redirects: string[]; resource: boolean; public: boolean }
 export interface SessionRecord { Digest: string; AuthTime: number; Expires: number; Assurance: boolean }
 export interface Activity { action: string; subject: string; time: number }

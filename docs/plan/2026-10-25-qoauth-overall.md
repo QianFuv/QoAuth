@@ -688,8 +688,8 @@ This supersedes the prior proposal wait. No further internal-plan approval is ne
 
 | Task | Bounded scope | Intended logical commit | State |
 |---|---|---|---|
-| C0 | A5 and this single checklist | docs(plan): record final closure authorization | In progress |
-| C1 | Existing password-policy consistency, shared new-password field, precise safe errors | fix(identity): align password policy across entry points | Pending |
+| C0 | A5 and this single checklist | docs(plan): record final closure authorization | Committed f0e2227 |
+| C1 | Existing password-policy consistency, shared new-password field, precise safe errors | fix(identity): align password policy across entry points | Done; commit follows |
 | C2 | Existing administrator reset API/UI with fresh MFA and CSRF, preserved factor/invalidation | feat(admin): expose controlled password reset | Pending |
 | C3 | Disabled-client list/safe settings and explicit review-prefill, no restored grants or secrets | feat(admin): review disabled application settings | Pending |
 | C4 | Minimal bounded readiness with generic public status and store/key/install checks | feat(health): expose bounded readiness checks | Pending |
@@ -714,3 +714,9 @@ certification. Cross-version testing operates only on copied temporary synthetic
 state and never checks out another Git branch. License inventory is not a source
 license decision. Record Linux/image execution honestly; do not start/install system
 services or change security configuration to obtain a pass.
+
+C1: centralized creation validation and public policy metadata; shared frontend field
+counts NFC code points/UTF-8 bytes, retaining existing login semantics. Identity/CLI/OP
+suites passed (57 top-level tests); added API policy/error consistency regression passed.
+TypeScript/Vite build passed. Windows runtime inspection found no running WSL distro
+and no Docker Desktop Linux engine pipe; neither was started. Browser acceptance is C6.

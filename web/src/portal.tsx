@@ -1,5 +1,6 @@
 /** Minimal login, factor, consent and self-service pages. */
 import React, { useEffect, useState } from "react";
+import { PasswordField } from "./password-field";
 import Button from "@douyinfe/semi-ui/lib/es/button";
 import { getJson, postJson, type SessionState, type SessionRecord } from "./api";
 import { AdminPanel } from "./admin";
@@ -117,7 +118,7 @@ function AccountPage(props: Actions) {
   if (isEnrolling && !props.session.has_factor) return <FactorForm {...props} />;
   return <><div className="page-heading"><div><div className="eyebrow">MY ACCOUNT</div><h1>{props.session.account.username}</h1></div><span className="badge">{props.session.has_factor ? "MFA protected" : "Password sign-in"}</span></div>{!props.session.has_factor ? <Button disabled={props.busy} onClick={() => setIsEnrolling(true)}>Set up authenticator MFA</Button> : null}{message ? <p role="status">{message}</p> : null}<div className="grid">
     <section><h2>Active sessions</h2><p className="muted">Revoke a session to stop its OAuth access and refresh tokens.</p><ul className="rows">{sessions.map(session => <li key={session.Digest}><span>{new Date(session.AuthTime * 1000).toLocaleString()}<small>{session.Assurance ? "Verified" : "Awaiting MFA"}</small></span><Button disabled={props.busy} onClick={() => void props.run(async () => { await postJson("/api/sessions/revoke", { session: session.Digest }, props.session.csrf); await props.refresh(); setSessions(await getJson<SessionRecord[]>("/api/sessions")); })}>Revoke</Button></li>)}</ul></section>
-    <section><h2>Change password</h2><p className="muted">Requires a login within the last five minutes. All existing QoAuth sessions and grants will end.</p><form onSubmit={changePassword}><label>New password<input type="password" name="password" minLength={15} maxLength={1024} required autoComplete="new-password" /></label><Button htmlType="submit" disabled={props.busy}>Change password</Button></form><a href="/login">Sign in again for sensitive changes</a></section>
+    <section><h2>Change password</h2><p className="muted">Requires a login within the last five minutes. All existing QoAuth sessions and grants will end.</p><form onSubmit={changePassword}><PasswordField label="New password" policy={props.session.password_policy} /><Button htmlType="submit" disabled={props.busy}>Change password</Button></form><a href="/login">Sign in again for sensitive changes</a></section>
     <section><h2>Application access</h2><form onSubmit={withdraw}><label>Application client ID<input name="client" required maxLength={64} /></label><Button htmlType="submit" disabled={props.busy}>Revoke consent and grants</Button></form></section>
   </div></>;
 }

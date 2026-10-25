@@ -3,6 +3,7 @@ package oidc
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -46,7 +47,7 @@ func (s *Server) api(response http.ResponseWriter, request *http.Request) {
 		}
 	}
 	if path == "/api/session" && request.Method == http.MethodGet {
-		writeJSON(response, map[string]any{"csrf": session.Csrf, "account": account, "authenticated": session.UserID != "", "assurance": session.Assurance, "has_factor": len(account.Factor) > 0, "fresh": session.AuthTime > time.Now().Add(-5*time.Minute).Unix()})
+		writeJSON(response, map[string]any{"csrf": session.Csrf, "account": account, "authenticated": session.UserID != "", "assurance": session.Assurance, "has_factor": len(account.Factor) > 0, "fresh": session.AuthTime > time.Now().Add(-5*time.Minute).Unix(), "password_policy": identity.CurrentPasswordPolicy()})
 		return
 	}
 	if path == "/api/interaction" && request.Method == http.MethodGet {
@@ -268,6 +269,10 @@ func (s *Server) api(response http.ResponseWriter, request *http.Request) {
 		}
 	}
 	if err != nil {
+		if errors.Is(err, identity.ErrPasswordPolicy) {
+			http.Error(response, err.Error(), 400)
+			return
+		}
 		http.Error(response, "operation rejected", 400)
 		return
 	}

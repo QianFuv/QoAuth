@@ -6,6 +6,7 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -18,25 +19,30 @@ import (
 )
 
 var ErrCredential = errors.New("invalid credential")
+var ErrPasswordPolicy = errors.New("password policy")
 var hashSlots = make(chan struct{}, 4)
 
 const passwordPrefix = "$argon2id$v=19$m=19456,t=2,p=1$"
+const MinPasswordCharacters = 15
+const MaxPasswordBytes = 1024
+
+// PasswordPolicy describes public creation rules without changing login verification.
+type PasswordPolicy struct {
+	MinCharacters int `json:"min_characters"`
+	MaxBytes      int `json:"max_bytes"`
+}
+
+// CurrentPasswordPolicy is shared by every password-creation entry point and the UI.
+func CurrentPasswordPolicy() PasswordPolicy {
+	return PasswordPolicy{MinCharacters: MinPasswordCharacters, MaxBytes: MaxPasswordBytes}
+}
 
 // PasswordHash accepts long passwords and uses a fixed bounded Argon2id profile.
 func PasswordHash(password string) (string, error) {
-	if len(password) > 1024 {
-		return "", errors.New("password exceeds 1024 UTF-8 bytes")
+	if err := ValidateNewPassword(password); err != nil {
+		return "", err
 	}
 	password = norm.NFC.String(password)
-	if !utf8.ValidString(password) || utf8.RuneCountInString(password) < 15 || len(password) > 1024 {
-		return "", errors.New("password must contain at least 15 characters and at most 1024 UTF-8 bytes")
-	}
-	blocked := []string{"passwordpassword", "123456789012345", "qwertyuiopasdfgh", "letmeinletmeinletmein"}
-	for _, common := range blocked {
-		if strings.EqualFold(password, common) {
-			return "", errors.New("choose a less common password")
-		}
-	}
 	salt := make([]byte, 16)
 	_, _ = rand.Read(salt)
 	digest, err := derive(password, salt)
@@ -44,6 +50,24 @@ func PasswordHash(password string) (string, error) {
 		return "", err
 	}
 	return passwordPrefix + base64.RawStdEncoding.EncodeToString(salt) + "$" + base64.RawStdEncoding.EncodeToString(digest), nil
+}
+
+// ValidateNewPassword counts normalized Unicode code points and bounds raw/normalized bytes.
+func ValidateNewPassword(password string) error {
+	if len(password) > MaxPasswordBytes || !utf8.ValidString(password) {
+		return fmt.Errorf("%w: use valid UTF-8 within %d bytes", ErrPasswordPolicy, MaxPasswordBytes)
+	}
+	password = norm.NFC.String(password)
+	if utf8.RuneCountInString(password) < MinPasswordCharacters || len(password) > MaxPasswordBytes {
+		return fmt.Errorf("%w: at least %d characters after Unicode normalization and at most %d UTF-8 bytes", ErrPasswordPolicy, MinPasswordCharacters, MaxPasswordBytes)
+	}
+	blocked := []string{"passwordpassword", "123456789012345", "qwertyuiopasdfgh", "letmeinletmeinletmein"}
+	for _, common := range blocked {
+		if strings.EqualFold(password, common) {
+			return fmt.Errorf("%w: choose a less common password", ErrPasswordPolicy)
+		}
+	}
+	return nil
 }
 
 func derive(password string, salt []byte) ([]byte, error) {
@@ -58,11 +82,11 @@ func derive(password string, salt []byte) ([]byte, error) {
 
 // CheckPassword rejects unrecognized or attacker-controlled hashing parameters.
 func CheckPassword(encoded, password string) bool {
-	if len(encoded) > 256 || len(password) > 1024 {
+	if len(encoded) > 256 || len(password) > MaxPasswordBytes {
 		return false
 	}
 	password = norm.NFC.String(password)
-	if len(password) > 1024 || !utf8.ValidString(password) || !strings.HasPrefix(encoded, passwordPrefix) {
+	if len(password) > MaxPasswordBytes || !utf8.ValidString(password) || !strings.HasPrefix(encoded, passwordPrefix) {
 		return false
 	}
 	parts := strings.Split(strings.TrimPrefix(encoded, passwordPrefix), "$")

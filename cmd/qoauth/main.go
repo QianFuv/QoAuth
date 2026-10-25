@@ -261,12 +261,12 @@ func readPassword(input io.Reader) (string, error) {
 			return "", errors.New("supply the password through redirected stdin; terminal echo and password arguments are not supported")
 		}
 	}
-	value, err := io.ReadAll(io.LimitReader(input, 1027))
+	value, err := io.ReadAll(io.LimitReader(input, identity.MaxPasswordBytes+3))
 	if err != nil {
 		return "", errors.New("cannot read password")
 	}
 	password := strings.TrimSuffix(strings.TrimSuffix(string(value), "\n"), "\r")
-	if len(password) > 1024 {
+	if len(password) > identity.MaxPasswordBytes {
 		return "", errors.New("password exceeds input limit")
 	}
 	return password, nil

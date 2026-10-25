@@ -1,6 +1,7 @@
 package identity
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,6 +10,28 @@ import (
 
 	"github.com/pquerna/otp/totp"
 )
+
+func TestNewPasswordUnicodePolicy(t *testing.T) {
+	for _, invalid := range []string{strings.Repeat("😀", 8), strings.Repeat("e\u0301", 14), strings.Repeat("a", 1025), strings.Repeat("e\u0301", 342), "PASSWORDPASSWORD", "invalid-utf8-credential\xff"} {
+		if err := ValidateNewPassword(invalid); !errors.Is(err, ErrPasswordPolicy) || strings.Contains(err.Error(), invalid) {
+			t.Fatal("invalid password accepted or echoed")
+		}
+	}
+	for _, valid := range []string{strings.Repeat("😀", 15), strings.Repeat("e\u0301", 15), strings.Repeat("a", 1024), "  spaces are part of my password  "} {
+		if err := ValidateNewPassword(valid); err != nil {
+			t.Fatal(err)
+		}
+	}
+	encoded, err := PasswordHash(strings.Repeat("e\u0301", 15))
+	if err != nil || !CheckPassword(encoded, strings.Repeat("é", 15)) {
+		t.Fatal("creation and verification normalize inconsistently")
+	}
+	spaced := "  spaces are part of my password  "
+	encoded, err = PasswordHash(spaced)
+	if err != nil || !CheckPassword(encoded, spaced) || CheckPassword(encoded, strings.TrimSpace(spaced)) {
+		t.Fatal("password spaces were changed")
+	}
+}
 
 func TestBoundedPasswordEncoding(t *testing.T) {
 	password := "synthetic credential for tests"
