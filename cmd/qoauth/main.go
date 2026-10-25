@@ -55,8 +55,8 @@ func run(arguments []string, input io.Reader, output io.Writer) error {
 	if *directory == "" {
 		return errors.New("--data-dir is required; no automatic initialization")
 	}
-	if command != "init" && command != "recover-owner" && command != "serve" {
-		return errors.New("expected init, recover-owner or serve")
+	if command != "init" && command != "recover-owner" && command != "serve" && command != "rotate-signing" {
+		return errors.New("expected init, recover-owner, rotate-signing or serve")
 	}
 	ctx := context.Background()
 	lock, err := identity.LockDirectory(*directory)
@@ -64,6 +64,9 @@ func run(arguments []string, input io.Reader, output io.Writer) error {
 		return err
 	}
 	defer lock.Close()
+	if command != "rotate-signing" && identity.HasPendingRotation(*directory) {
+		return errors.New("unfinished key publication; resume rotate-signing before other commands")
+	}
 	if command == "init" {
 		if !regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$`).MatchString(*username) {
 			return errors.New("valid --username required")
@@ -127,6 +130,12 @@ func run(arguments []string, input io.Reader, output io.Writer) error {
 		return errors.New("database unavailable")
 	}
 	defer database.Close()
+	if command == "rotate-signing" {
+		if !*confirm {
+			return errors.New("signing rotation requires --confirm")
+		}
+		return rotateSigning(ctx, database, keys, *directory, output)
+	}
 	if err = database.CheckInstallation(ctx, keys.Binding()); err != nil {
 		return err
 	}
@@ -179,6 +188,21 @@ func run(arguments []string, input io.Reader, output io.Writer) error {
 	if err = server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		return errors.New("HTTP server stopped unexpectedly")
 	}
+	return nil
+}
+
+func rotateSigning(ctx context.Context, database *store.Store, keys *identity.Keys, directory string, output io.Writer) error {
+	next, err := identity.StageRotation(directory, keys, time.Now())
+	if err != nil {
+		return err
+	}
+	if err = database.RotateSigningBinding(ctx, keys.Binding(), next.Binding()); err != nil {
+		return errors.New("rotation binding did not commit; keep files and retry the same command")
+	}
+	if err = identity.PublishRotation(directory); err != nil {
+		return errors.New("rotation publication incomplete; keep files and retry the same command")
+	}
+	fmt.Fprintln(output, "Signing key rotated. AES unchanged; previous public key expires after its bounded verification window.")
 	return nil
 }
 

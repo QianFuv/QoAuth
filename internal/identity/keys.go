@@ -12,6 +12,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 // Keys holds the installation signing and data-encryption keys without log methods.
@@ -19,6 +20,21 @@ type Keys struct {
 	Signing    *rsa.PrivateKey
 	Encryption [32]byte
 	ID         string
+	Previous   *VerificationKey
+	Replaces   string
+}
+
+// IDTokenLifetime is the fixed maximum signed-token lifetime of this provider.
+const IDTokenLifetime = 5 * time.Minute
+
+// VerificationWindow includes the maximum lifetime and five minutes of RP clock skew.
+const VerificationWindow = IDTokenLifetime + 5*time.Minute
+
+// VerificationKey retains public material only during a bounded rotation overlap.
+type VerificationKey struct {
+	Public *rsa.PublicKey
+	ID     string
+	Until  int64
 }
 
 // Binding detects replacement of either operational key when opening a database.
@@ -32,29 +48,64 @@ type diskKeys struct {
 	Version    int
 	Signing    []byte
 	Encryption []byte
+	Previous   []byte `json:",omitempty"`
+	Until      int64  `json:",omitempty"`
+	Replaces   string `json:",omitempty"`
 }
 
 // CreateKeys exclusively creates a private key file during explicit initialization.
 // Serving never calls it or silently regenerates missing keys.
 func CreateKeys(directory string) (*Keys, error) {
+	keys, err := freshSigningKey()
+	if err != nil {
+		return nil, err
+	}
+	_, _ = rand.Read(keys.Encryption[:])
+	if err = WriteKeys(directory, keys); err != nil {
+		return nil, err
+	}
+	return LoadKeys(directory)
+}
+
+func freshSigningKey() (*Keys, error) {
 	private, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return nil, err
 	}
-	encoded, err := x509.MarshalPKCS8PrivateKey(private)
+	return &Keys{Signing: private, ID: publicID(&private.PublicKey)}, nil
+}
+
+func publicID(public *rsa.PublicKey) string {
+	encoded, _ := x509.MarshalPKIXPublicKey(public)
+	digest := sha256.Sum256(encoded)
+	return hex.EncodeToString(digest[:12])
+}
+
+// WriteKeys exclusively creates the key file in a new private installation.
+func WriteKeys(directory string, keys *Keys) error {
+	return writeKeys(filepath.Join(directory, "keys.json"), keys)
+}
+
+func writeKeys(path string, keys *Keys) error {
+	encoded, err := x509.MarshalPKCS8PrivateKey(keys.Signing)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	secret := make([]byte, 32)
-	_, _ = rand.Read(secret)
-	content, err := json.Marshal(diskKeys{Version: 1, Signing: encoded, Encryption: secret})
+	stored := diskKeys{Version: 2, Signing: encoded, Encryption: keys.Encryption[:], Replaces: keys.Replaces}
+	if keys.Previous != nil {
+		stored.Previous, err = x509.MarshalPKIXPublicKey(keys.Previous.Public)
+		if err != nil {
+			return err
+		}
+		stored.Until = keys.Previous.Until
+	}
+	content, err := json.Marshal(stored)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	path := filepath.Join(directory, "keys.json")
 	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if err != nil {
-		return nil, errors.New("key file already exists or cannot be created")
+		return errors.New("key file already exists or cannot be created")
 	}
 	succeeded := false
 	defer func() {
@@ -64,21 +115,27 @@ func CreateKeys(directory string) (*Keys, error) {
 		}
 	}()
 	if err = restrictFile(path); err != nil {
-		return nil, err
+		return err
 	}
 	if _, err = file.Write(content); err != nil {
-		return nil, errors.New("cannot persist keys")
+		return errors.New("cannot persist keys")
 	}
 	if err = file.Sync(); err != nil {
-		return nil, errors.New("cannot sync keys")
+		return errors.New("cannot sync keys")
+	}
+	if err = syncDirectory(filepath.Dir(path)); err != nil {
+		return errors.New("cannot sync key directory")
 	}
 	succeeded = true
-	return LoadKeys(directory)
+	return nil
 }
 
 // LoadKeys fails closed on missing, malformed, unsafe or changed key files.
 func LoadKeys(directory string) (*Keys, error) {
-	path := filepath.Join(directory, "keys.json")
+	return loadKeys(filepath.Join(directory, "keys.json"))
+}
+
+func loadKeys(path string) (*Keys, error) {
 	info, err := os.Lstat(path)
 	if err != nil || !info.Mode().IsRegular() || info.Size() > 16384 {
 		return nil, errors.New("installation keys unavailable")
@@ -91,7 +148,7 @@ func LoadKeys(directory string) (*Keys, error) {
 		return nil, errors.New("installation keys unreadable")
 	}
 	var stored diskKeys
-	if json.Unmarshal(content, &stored) != nil || stored.Version != 1 || len(stored.Encryption) != 32 {
+	if json.Unmarshal(content, &stored) != nil || (stored.Version != 1 && stored.Version != 2) || len(stored.Encryption) != 32 {
 		return nil, errors.New("installation keys invalid")
 	}
 	parsed, err := x509.ParsePKCS8PrivateKey(stored.Signing)
@@ -102,14 +159,69 @@ func LoadKeys(directory string) (*Keys, error) {
 	if !ok || private.N.BitLen() != 2048 || private.Validate() != nil {
 		return nil, errors.New("signing key invalid")
 	}
-	public, err := x509.MarshalPKIXPublicKey(&private.PublicKey)
+	keys := &Keys{Signing: private, ID: publicID(&private.PublicKey), Replaces: stored.Replaces}
+	copy(keys.Encryption[:], stored.Encryption)
+	if len(stored.Previous) != 0 {
+		parsed, err := x509.ParsePKIXPublicKey(stored.Previous)
+		if err != nil {
+			return nil, errors.New("previous verification key invalid")
+		}
+		public, ok := parsed.(*rsa.PublicKey)
+		if !ok || public.N.BitLen() != 2048 || public.E != 65537 || stored.Until <= 0 || publicID(public) == keys.ID {
+			return nil, errors.New("previous verification key invalid")
+		}
+		keys.Previous = &VerificationKey{Public: public, ID: publicID(public), Until: stored.Until}
+	} else if stored.Until != 0 {
+		return nil, errors.New("previous verification key missing")
+	}
+	return keys, nil
+}
+
+// HasPendingRotation forces startup to stop after an interrupted key publication.
+func HasPendingRotation(directory string) bool {
+	_, err := os.Lstat(filepath.Join(directory, "keys.next.json"))
+	return !os.IsNotExist(err)
+}
+
+// StageRotation creates one resumable candidate while the installation lock is held.
+func StageRotation(directory string, current *Keys, now time.Time) (*Keys, error) {
+	path := filepath.Join(directory, "keys.next.json")
+	if HasPendingRotation(directory) {
+		next, err := loadKeys(path)
+		if err != nil || next.Replaces != current.Binding() || next.Encryption != current.Encryption || next.Previous == nil || next.Previous.ID != current.ID {
+			return nil, errors.New("pending signing rotation is invalid; preserve files and restore a verified backup")
+		}
+		return next, nil
+	}
+	if current.Previous != nil && current.Previous.Until > now.Unix() {
+		return nil, errors.New("previous signing key is still in its verification window")
+	}
+	next, err := FreshRestoreKeys(current)
 	if err != nil {
 		return nil, err
 	}
-	digest := sha256.Sum256(public)
-	keys := &Keys{Signing: private, ID: hex.EncodeToString(digest[:12])}
-	copy(keys.Encryption[:], stored.Encryption)
+	next.Replaces = current.Binding()
+	next.Previous = &VerificationKey{Public: &current.Signing.PublicKey, ID: current.ID, Until: now.Add(VerificationWindow).Unix()}
+	if err = writeKeys(path, next); err != nil {
+		return nil, err
+	}
+	return next, nil
+}
+
+// FreshRestoreKeys preserves AES data custody but discards all old signing trust.
+func FreshRestoreKeys(previous *Keys) (*Keys, error) {
+	keys, err := freshSigningKey()
+	if err != nil {
+		return nil, err
+	}
+	keys.Encryption = previous.Encryption
 	return keys, nil
+}
+
+// PublishRotation atomically replaces the old file after its DB binding commits.
+// A failed publication keeps startup closed; the same command can resume it.
+func PublishRotation(directory string) error {
+	return replaceFile(filepath.Join(directory, "keys.next.json"), filepath.Join(directory, "keys.json"))
 }
 
 func (keys *Keys) aead() cipher.AEAD {

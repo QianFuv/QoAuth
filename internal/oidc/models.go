@@ -10,6 +10,7 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	protocol "github.com/zitadel/oidc/v3/pkg/oidc"
 	"github.com/zitadel/oidc/v3/pkg/op"
+	"qoauth/internal/identity"
 	"qoauth/internal/store"
 )
 
@@ -47,7 +48,7 @@ func (c *client) GrantTypes() []protocol.GrantType {
 }
 func (c *client) LoginURL(id string) string           { return "/login?request=" + url.QueryEscape(id) }
 func (c *client) AccessTokenType() op.AccessTokenType { return op.AccessTokenTypeBearer }
-func (c *client) IDTokenLifetime() time.Duration      { return 5 * time.Minute }
+func (c *client) IDTokenLifetime() time.Duration      { return identity.IDTokenLifetime }
 func (c *client) DevMode() bool                       { return c.development }
 func (c *client) RestrictAdditionalIdTokenScopes() func([]string) []string {
 	return func(scopes []string) []string { return scopes }
@@ -110,6 +111,7 @@ func (request *refreshRequest) SetCurrentScopes(scopes []string) {
 
 type signingKey struct {
 	private *rsa.PrivateKey
+	verify  *rsa.PublicKey
 	id      string
 	public  bool
 }
@@ -119,6 +121,9 @@ func (key signingKey) SignatureAlgorithm() jose.SignatureAlgorithm { return jose
 func (key signingKey) Algorithm() jose.SignatureAlgorithm          { return jose.RS256 }
 func (key signingKey) Use() string                                 { return "sig" }
 func (key signingKey) Key() any {
+	if key.verify != nil {
+		return key.verify
+	}
 	if key.public {
 		return &key.private.PublicKey
 	}

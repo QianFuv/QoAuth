@@ -494,7 +494,7 @@ Baseline is clean main `15e2f421c522113d4529e3872710fda512174d7c`.
 |---|---|---|---|
 | N1 | This accepted execution record | docs(plan): record M2.2 maintenance approval | Done; identifiable by exact message |
 | N2 | Private installation lock, shared CLI lifecycle, isolated process tests | feat(storage): serialize local installation operations | Done; identifiable by exact message |
-| N3 | Persistent signing rotation and OP verification window, restart/interruption tests | feat(keys): rotate signing keys with bounded overlap | Pending |
+| N3 | Persistent signing rotation and OP verification window, restart/interruption tests | feat(keys): rotate signing keys with bounded overlap | Done; identifiable by exact message |
 | N4 | Consistent backup, new-directory restore, restricted recovery and signed-token quarantine | feat(maintenance): add isolated backup and restore | Pending |
 | N5 | Bounded dependency-aware state and activity cleanup, failure regressions | feat(storage): bound maintenance without losing replay evidence | Pending |
 | N6 | Actual checks, operational instructions and bounded remaining product/release list | docs(validation): record M2.2 maintenance evidence | Pending |
@@ -513,3 +513,23 @@ lock file uses nonblocking OS locking; serving and all local mutations share it.
 Same-process/cross-process contention rejects a second owner; process exit releases
 the lock without unlinking the file. Tests use only temporary installations. Unix
 locking is included in the later cross-build; no Linux runtime pass is implied.
+
+N3 evidence: the full scoped Windows race run passed 89 tests/subtests across seven
+packages (`.cache/m22-rotation-race.json`). Rotation stages one synced candidate,
+commits its DB binding and atomically publishes; either interrupted commit boundary
+is explicitly resumable with the same key/deadline. Startup rejects pending state.
+Real COMMIT failure preserves the old binding. Concurrent CLI attempts yield one
+success. A new process verifies the rotated binding/key and unchanged AES/TOTP.
+The standard RP fetches the new kid; existing opaque access/refresh survive ordinary
+rotation. Each JWKS call drops the previous public key at its persisted ten-minute
+deadline (five-minute ID tokens plus supported five-minute clock-skew allowance).
+Only public old material is retained; repeated rotation during overlap is rejected.
+Native Linux and filesystem power-loss behavior are not runtime-verified here.
+
+Two independent baseline design reviews confirmed no OP key-cache hook is needed,
+but RP application caches do not have a reliable finite TTL. Restore must use fresh
+RSA without overlap and enforce a persisted quarantine anchored to stopped issuance,
+not backup time. Reviews also require waiting for HTTP shutdown before releasing
+the lock, non-migrating exact snapshot inspection, incomplete-restore markers and
+preserving session/request parents of live grants. These are integrated into N4/N5;
+static review itself is not test evidence.

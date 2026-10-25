@@ -198,7 +198,11 @@ func (s *Server) SignatureAlgorithms(context.Context) ([]jose.SignatureAlgorithm
 	return []jose.SignatureAlgorithm{jose.RS256}, nil
 }
 func (s *Server) KeySet(context.Context) ([]op.Key, error) {
-	return []op.Key{signingKey{private: s.keys.Signing, id: s.keys.ID, public: true}}, nil
+	keys := []op.Key{signingKey{private: s.keys.Signing, id: s.keys.ID, public: true}}
+	if previous := s.keys.Previous; previous != nil && previous.Until > time.Now().Unix() {
+		keys = append(keys, signingKey{verify: previous.Public, id: previous.ID, public: true})
+	}
+	return keys, nil
 }
 func (s *Server) Health(ctx context.Context) error { return s.database.Health(ctx) }
 func (s *Server) GetClientByClientID(ctx context.Context, id string) (op.Client, error) {
