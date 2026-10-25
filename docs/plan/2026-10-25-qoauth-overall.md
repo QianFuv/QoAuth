@@ -576,3 +576,9 @@ Retention does not change baseline replay semantics: still-valid consumed creden
 revoke their family on reuse; expired ancestors are rejected before replay handling
 and do not revoke live successors. Their retained rows are not claimed as evidence
 of family-lifetime replay detection. No daemon or persistent schedule was created.
+
+N4 correction under A4: `fix(maintenance): reject schema prefix lookalikes` covers
+only snapshot schema filtering, its rehashed malicious-trigger regression and this
+record. Independent review found SQL LIKE treated the underscore as a wildcard.
+The new test first failed because a `sqliteXrestore` trigger bypassed validation;
+literal-prefix GLOB matching now rejects it before destination creation.

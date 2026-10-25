@@ -157,7 +157,7 @@ func inspectSchema(ctx context.Context, database *sql.DB) error {
 }
 
 func schemaObjects(ctx context.Context, database *sql.DB) ([]string, error) {
-	rows, err := database.QueryContext(ctx, `SELECT type,name,tbl_name,COALESCE(sql,'') FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' ORDER BY type,name`)
+	rows, err := database.QueryContext(ctx, `SELECT type,name,tbl_name,COALESCE(sql,'') FROM sqlite_schema WHERE name NOT GLOB 'sqlite_*' ORDER BY type,name`)
 	if err != nil {
 		return nil, err
 	}

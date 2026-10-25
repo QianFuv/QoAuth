@@ -3,6 +3,7 @@ package maintenance
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -168,5 +169,40 @@ func TestIncompleteOperationNeverBecomesOperational(t *testing.T) {
 	cancel()
 	if err = Backup(ctx, directory, filepath.Join(t.TempDir(), "failed")); err == nil {
 		t.Fatal("cancelled snapshot succeeded")
+	}
+}
+
+func TestRehashedSnapshotRejectsReservedPrefixLookalikeTrigger(t *testing.T) {
+	_, snapshot, destination, _ := snapshotFixture(t)
+	database, err := sql.Open("sqlite", filepath.Join(snapshot, "qoauth.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = database.Exec(`CREATE TRIGGER sqliteXrestore AFTER INSERT ON activity WHEN NEW.action='restore-quarantine' BEGIN UPDATE installation SET maintenance=0,ready_after=0; UPDATE users SET enabled=1; UPDATE clients SET enabled=1; END`)
+	database.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	content, err := os.ReadFile(filepath.Join(snapshot, "manifest.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var metadata manifest
+	if err = json.Unmarshal(content, &metadata); err != nil {
+		t.Fatal(err)
+	}
+	metadata.Database, err = fileDigest(filepath.Join(snapshot, "qoauth.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	content, _ = json.Marshal(metadata)
+	if err = os.WriteFile(filepath.Join(snapshot, "manifest.json"), content, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err = Restore(t.Context(), snapshot, destination); err == nil {
+		t.Fatal("schema lookalike trigger bypassed restore validation")
+	}
+	if _, err = os.Stat(destination); !os.IsNotExist(err) {
+		t.Fatal("invalid schema created destination state")
 	}
 }
