@@ -692,8 +692,8 @@ This supersedes the prior proposal wait. No further internal-plan approval is ne
 | C1 | Existing password-policy consistency, shared new-password field, precise safe errors | fix(identity): align password policy across entry points | Committed d50d81d |
 | C2 | Existing administrator reset API/UI with fresh MFA and CSRF, preserved factor/invalidation | feat(admin): expose controlled password reset | Committed 6f4499e |
 | C3 | Disabled-client list/safe settings and explicit review-prefill, no restored grants or secrets | feat(admin): review disabled application settings | Committed 54e34a5 |
-| C4 | Minimal bounded readiness with generic public status and store/key/install checks | feat(health): expose bounded readiness checks | Done; commit follows |
-| C5 | Second pinned RP implementation and focused local protocol checks | test(oidc): verify a second standard relying party | Pending |
+| C4 | Minimal bounded readiness with generic public status and store/key/install checks | feat(health): expose bounded readiness checks | Committed b240fc3 |
+| C5 | Second pinned RP implementation and focused local protocol checks | test(oidc): verify a second standard relying party | Done; commit follows |
 | C6 | Existing phase-version restore/upgrade drill, bounded load, browser/accessibility evidence | test(validation): exercise release closure scenarios | Pending |
 | C7 | Versioned local binaries, graph/NOTICE/license/SBOM inventory and packaging script | build(distribution): assemble versioned local artifacts | Pending |
 | C8 | Actual evidence, runbook and finite remaining gates; no next feature expansion | docs(validation): close bounded delivery checks | Pending |
@@ -741,3 +741,12 @@ restore quarantine. It creates no cookie/session, returns only ready true/false,
 and rejects other methods. Two targeted tests passed, including exhausted-pool
 timeout, cancellation, wrong binding/issuer, restore blocking and closed storage.
 This is readiness, not an external TLS/proxy probe or exhaustive integrity scan.
+
+C5: pinned Zitadel RP discovery, S256 code exchange, nonce/signature/at_hash,
+subject-bound UserInfo, refresh and discovered browser-confirmed logout pass against
+the production SQLite adapter. Negative PKCE, nonce, access substitution, UserInfo
+subject and missing-logout-CSRF checks pass. Coreos and targeted authorization/prompt
+regressions were rerun. This second implementation shares the OP module and OAuth2/JOSE
+dependencies; it is not fully independent. The RP EndSession helper lacks browser
+CSRF/origin confirmation support and is not claimed interoperable. No OIDF suite
+was installed or certification claimed; these are targeted local protocol checks.
