@@ -1,29 +1,28 @@
 # Short roadmap and acceptance conditions
 
-Review revision: 2, 2026-10-25. The user's scope correction supersedes the earlier
-team/B2B/enterprise roadmap. Parent A2 now authorizes M1 locally. Estimates are rough
+Review revision: 3, 2026-10-25. The lightweight scope still supersedes the earlier
+team/B2B/enterprise roadmap. Parent A3 authorized M2.1 locally. Estimates are rough
 effort for one experienced engineer, not delivery promises.
 
 | Milestone | Effort estimate | Result |
 |---|---|---|
-| M0 Research and plan | Current stage | Official-source comparisons and this lightweight review package; local document commits |
+| M0 Research and plan | Completed | Official-source comparisons and this lightweight review package; local document commits |
 | M1 Small feasibility gate | 3-5 working days | Validate Go OP library + SQLite transactions + embedded UI on both targets; select a patched dependency graph |
 | M2 Working core | 3-5 engineer-weeks | Local users, apps/scopes, code+PKCE, SSO/sessions/revoke, TOTP/recovery, simple admin UI/logs |
 | M3 Validate and package | 2-3 engineer-weeks | Protocol/security regression evidence, Go integration example, native binaries/image smoke, backup/restore and rotation guide |
 
-M1 evidence is now recorded in the [single execution checklist](plan/2026-10-25-qoauth-overall.md#final-m1-evidence-2026-10-25):
-28 passing tests/subtests, scoped vet/race, dependency scans, both target builds and
-Compose config validation. Native Linux/container runs remain missing. The current
-application is a UI shell; actual OIDC/SQLite login is synthetic test code, not a
-production login service. The checklist also proposes the bounded M2.1 core for
-parent review; no new implementation has started under that proposal.
+M0/M1 were accepted; M2.1 core implementation and available local verification are
+complete for parent review. The current executable is a real authentication service,
+distinct from test-only fixture code. Seventy-nine race tests/subtests, standard RP
+HTTP/browser flows, native Windows restart, source/final-binary scans, target builds
+and Compose validation have evidence. Linux native/image execution remains open.
+See the [single checklist](plan/2026-10-25-qoauth-overall.md#final-m21-evidence-2026-10-25).
 
-M1 uses the single approved checklist; M2/M3 remain later parent review decisions.
-No enterprise expansion, HA phase, or additional infrastructure is implied.
-Security tests accompany M1/M2; M3 consolidates evidence instead of adding security
-after the fact. A roughly 6-9 week initial effort is a planning range, subject to
-library defects and available native test environments. No production claim before
-the acceptance evidence and user review.
+M2.1 covers one independent RP library in two app registrations; a second RP library
+and local conformance suite remain release checks. The next bounded proposal is
+M2.2 minimal maintenance/restore/rotation, described with files, tests and authority
+in the same checklist. No enterprise expansion or infrastructure dependency is implied.
+All estimates above are planning ranges, not completion or production promises.
 
 ## M0 document acceptance
 

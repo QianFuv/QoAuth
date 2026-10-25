@@ -1,8 +1,9 @@
 # Lightweight product scope
 
-Review revision: 2, 2026-10-25. This replaces the earlier enterprise-oriented
-proposal following the user's explicit scope correction. A2 accepts the direction
-and authorizes M1 synthetic local feasibility; production behavior remains unverified.
+Review revision: 3, 2026-10-25. The lightweight scope remains authoritative.
+A3 authorized M2.1 local core implementation; actual temporary-state evidence is in
+the checklist. Backup/rotation/conformance and native Linux/image verification remain
+release gates; the product target below is not a claim that every feature is done.
 
 ## Intended result
 

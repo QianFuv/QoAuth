@@ -1,8 +1,10 @@
 # Focused threat model, tests and risks
 
-Review revision: 2, 2026-10-25. Single installation, local users and clients.
-M0 executed no product checks. A2 authorizes M1 synthetic local implementation;
-actual evidence is recorded in the single checklist, never inferred here.
+Review revision: 3, 2026-10-25. Single installation, local users and clients.
+A3 authorized M2.1; 79 scoped race tests/subtests, real temporary browser flows and Windows
+process restart have executed. The [checklist](plan/2026-10-25-qoauth-overall.md#final-m21-evidence-2026-10-25)
+records exact evidence. The full matrix below remains a release contract, not a
+claim that every fuzz/conformance/backup/platform gate has passed.
 
 ## Assets and boundaries
 
@@ -60,9 +62,10 @@ replace a factor using only a reset email. Without SMTP, provide an owner-assist
 procedure and recovery codes. A sole-admin break-glass procedure must require
 local host control, explicit confirmation, session/grant invalidation and an activity
 record, then force MFA re-enrollment before privileged use. It is not a public API
-backdoor. Document the exact procedure during implementation; create no credentials
-or recovery bindings in M1; use explicit synthetic fixtures only. Production claim
-requires local host control and cannot reopen for an initialized database.
+backdoor. Implemented command: `recover-owner --data-dir <private-directory> --confirm`,
+reading a replacement password from redirected stdin. All execution used synthetic
+temporary state. Initialization requires local host control, cannot reopen an
+initialized database, and refuses a missing database beside existing keys.
 [OWASP recovery](https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html).
 
 ## Verification strategy
@@ -101,3 +104,36 @@ Before a real-use candidate, perform a focused independent review of protocol,
 recovery, client isolation and storage invariants; resolve critical/high exploitable
 findings and record other residual risks. No blanket “secure production ready”
 statement follows from this planning document.
+
+## M2.1 review closure and remaining gates
+
+Two independent reviews at 0503b9d found seven P1 items. Corrections reject duplicate
+protocol values and POST callback confusion, recheck silent consent atomically,
+separate proxy client rate budgets, bound/prune anonymous state, validate trusted
+file ownership, and validate existing SQLite sidecars. A second review at 9cf4784
+found cleanup rollback on denied admission; regressions and a correction now commit
+cleanup while retaining atomic quotas. These were static reviews; the implementation agent ran
+the tests. They do not constitute certification or a claim of exhaustive audit.
+
+Passwords: strict Argon2id v19 m=19456 KiB/t=2/p=1, 16-byte salt/32-byte verifier,
+15-rune minimum, 1024-byte maximum and four concurrent hash slots. The local common-
+password blocklist is intentionally small and needs coverage/performance assessment
+before real use. TOTP uses six digits/SHA-1/30 seconds, current counter +/-1, with
+monotonic replay prevention including enrollment. Recovery codes are 256-bit random
+handles stored as hashes. Recovery retires the whole old factor/code set and gives
+only replacement-enrollment authority; password reset preserves enrolled MFA.
+
+Cookie handles rotate on password/MFA authentication. HTTPS uses host-only
+__Host-/Secure/HttpOnly/Lax cookies; the explicit HTTP test mode is loopback-only.
+Browser mutations require a session CSRF proof and exact configured Origin.
+Native logout forms use strict-origin Referrer-Policy and only validated CSP redirect
+origins; null/foreign origins remain rejected. OAuth token endpoints use their own
+client/PKCE checks rather than browser cookies. Tokens and full request bodies are
+not logged; protocol logs redact arbitrary attributes and messages.
+
+Remaining real-use gates: second independent RP implementation and selected local
+OIDF conformance profiles; native Linux/image execution; backup/restore rollback and
+key-rotation lifecycle; authenticated state/activity retention, disk-full/pressure and
+password-cost measurements; comprehensive accessibility and distribution notices/SBOM.
+Private key material is held in a protected local file, not hardware-backed storage;
+host administrators remain trusted. No blanket production-ready claim is warranted.

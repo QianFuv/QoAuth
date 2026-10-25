@@ -2,7 +2,16 @@
 
 Recorded: 2026-10-25 (Asia/Singapore). Product name: QoAuth.
 
-## Current authorization A2
+## Current authorization A3
+
+The parent message beginning "我已审阅 M1 最终证据和 M2.1 三部分计划，批准在原授权范围内实施 M2.1"
+authorized the bounded core, verification and logical main commits from 0a77f7b.
+Code may implement durable keys and owner initialization, but validation uses only
+temporary isolated synthetic state. This is the actual parent decision, not invented
+end-user wording. Real credentials, deployment, system services and external bindings
+remain outside scope. The earlier research-only stop below is historical.
+
+## Historical authorization A2
 
 Parent internal review on 2026-10-25 accepted the lightweight direction and lifted
 the M0 stop for M1 local feasibility implementation, tests and logical local commits.
@@ -49,7 +58,7 @@ to a future QoAuth policy service. These boundaries must be reflected in the des
 - Windows amd64 and Linux amd64 executables; Linux amd64 Docker image.
 - Work directly on `main`; one logical change per commit. No development branch
   or worktree, remote push, release, or deployment.
-- This stage is documentation and research only. Do not implement business code.
+- Original M0 stop: documentation/research only; subsequently superseded by A2/A3 within their bounded implementation scopes.
 - Compare Keycloak, authentik, ZITADEL, Ory, Casdoor, Authelia, Auth0, Okta,
   Microsoft Entra, and Clerk; select representative systems for deeper analysis.
 - Cover product scenarios, feature tiers, architecture, storage, deployment,

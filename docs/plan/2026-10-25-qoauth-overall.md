@@ -1,12 +1,12 @@
-# QoAuth lightweight plan and M1 execution checklist
+# QoAuth lightweight plan and execution checklist
 
 Protocol Version: 2026-09-05
 Protocol Revision: autonomous-execution-git-flow-v2
 
-Revision 4, 2026-10-25. Status: M1 accepted; M2.1 authorized and in progress.
-Parent internal review accepted the
-lightweight direction and explicitly authorized M1 local feasibility work (A2).
-There is no outstanding end-user approval gate for this scope. This is the single
+Revision 5, 2026-10-25. Status: M1 accepted; M2.1 implementation and available local
+verification complete, submitted for parent acceptance. Parent A3 authorized this
+core implementation and its logical local commits. Linux native/image runs remain
+unverified. There is no outstanding end-user approval gate for this scope. This is the single
 execution checklist; do not create another plan for each small step.
 
 ## Outcome and boundaries
@@ -17,8 +17,9 @@ Use standard OIDC code with S256 PKCE, signed JWT ID Tokens, opaque access token
 and authenticated introspection. A genuine standard Go RP must exercise the actual
 OP handler and SQLite adapter; a private protocol cannot substitute for OIDC.
 
-M1 uses synthetic fixtures and ephemeral test keys only. No production authentication
-service, real user directory, durable real credentials, SMTP, external OAuth bindings,
+M1 used synthetic fixture callbacks. M2.1 implements the real authentication service,
+but all validation still uses temporary synthetic credentials, keys and databases.
+No real user directory, durable real credentials, SMTP, external OAuth bindings,
 public deployment, firewall changes or system/runtime installation. No PostgreSQL,
 Redis, queues, enterprise tenancy, SCIM/LDAP/SAML or HA. Stay on main, one logical
 change per local commit; no worktree, branch, push, release or deployment.
@@ -49,7 +50,7 @@ reconciliation of rolled-back user/client/key settings, without distributed epoc
   first-run/container boundary; integrated feasibility slice; offline_access example.
   These are design findings, not runtime vulnerability findings or test passes.
 
-## Single execution checklist
+## Historical M1 execution checklist
 
 Baseline: clean main at `049400d545d3f2a6feff9152f45e625aa92be4ed`, no user edits.
 Local commits use explicit A2 task authorization, not inferred blanket Git Flow.
@@ -65,7 +66,8 @@ run normal hooks, and reconcile resulting HEAD for every logical commit.
 | T5 | Existing README/architecture/dependencies/integration/roadmap/checklist evidence | V1-V6 applicable checks | docs(validation): record M1 evidence and remaining gates | Done; commit identifiable by its exact message in Git |
 
 Record a necessary separate logical correction's scope/message before committing
-under A2. No unrelated changes or history rewriting. M2 remains a later parent decision.
+under A2. No unrelated changes or history rewriting. M2.1 was subsequently accepted
+under A3 below; the M1 baseline is historical and must not be restored.
 
 ## Verification and acceptance
 
@@ -248,7 +250,7 @@ but execution only with temporary isolated synthetic credentials/databases.
 | U2 | Password/TOTP/key primitives, SQLite identity/session/client transitions, dependency locks and tests | feat(identity): persist credentials and enforce atomic session security | Done: 788a4f6 |
 | U3 | Production config/CLI/OP, account/management APIs, Go RP, private-directory/store support and container command wiring | feat(auth): connect local accounts to standard OIDC sessions | Done: 0503b9d |
 | U4 | Embedded Semi screens, UI response contract and bounded browser harness | feat(ui): add local authentication and management screens | Done: 20098bf |
-| U5 | Final security/build evidence, deployment limits and next bounded scope | docs(validation): record M2.1 authentication evidence | Pending |
+| U5 | Final security/build evidence, deployment limits and next bounded scope | docs(validation): record M2.1 authentication evidence | Done; this evidence commit is identifiable by its exact message in Git |
 
 Mandatory checks extend V1-V6: secure cookie attributes and origin/CSRF binding;
 TOTP window replay and recovery-code contention; disable/password/factor recovery
@@ -354,3 +356,126 @@ Both targets rebuild; Compose config validates. Actual Windows binary initializa
 HTTP discovery/embedded UI, two separate serve processes and unchanged JWKS pass
 using a temporary synthetic installation, removed after stopping both processes.
 Linux and container execution remain unverified; no service was installed or started.
+
+## Final M2.1 evidence (2026-10-25)
+
+Implementation/build reference: `6144c9c12b8b15eb6a412321cbfc4bab08cf9ac5` on main.
+U5 changes documentation only. Earlier 28/58-test results above are historical;
+the final applicable run below includes the review corrections and UI/RP contracts.
+The primary agent inspected results; independent reviews were static only.
+All accounts, credentials, keys and databases used for verification were synthetic.
+
+| Check | Actual result | Evidence/limit |
+|---|---|---|
+| `go test -count=1 -timeout 180s -race -json ./cmd/... ./internal/... ./examples/...` | 79 tests/subtests and seven packages passed, zero failures | `.cache/m21-race.json`; Windows, existing GCC, CGO_ENABLED=1; helper/browser entrypoints skipped in ordinary suite |
+| `go vet ./cmd/... ./internal/... ./examples/...`; Go formatting | Passed | Scoped packages avoid frontend dependency sources |
+| `npm run build` in web | TypeScript/Vite passed | 274.37 kB JS and 52.96 kB CSS; gzip 84.37/9.06 kB |
+| `npm audit --json` | Zero findings at every severity | `.cache/m21-npm-audit.json`; current locked graph |
+| govulncheck v1.9.0, source and `-mode=binary` on both final artifacts | Zero affected symbols/imported packages | `.cache/m21-vuln-source.txt`, `m21-vuln-windows-final.txt`, `m21-vuln-linux-final.txt`; one required-module advisory in unimported OpenPGP remains |
+| `CGO_ENABLED=0 GOARCH=amd64 GOOS=<windows,linux> go build -trimpath -ldflags="-w" ... ./cmd/qoauth` | Both final executables built | Symbol tables retained for precise vulnerability scans; no release publication |
+| Native Windows executable | Explicit init, discovery, embedded UI, JWKS, stop and separate-process restart passed | Same temporary database/key file and stable JWKS; task processes stopped and temporary installation removed |
+| Browser + actual production adapter + independent Go RP | Login, consent, callback/UserInfo, confirmed logout and rejection afterward passed | Chrome fallback after two T3 snapshot timeouts; no external account/binding |
+| Browser management | Owner TOTP, user create/disable, public client registration/assignment and account/session views passed | Ignored screenshot `.cache/m21-admin.png`; synthetic state; no full accessibility claim |
+| `docker compose config --quiet` | Passed | No Docker image build/run; no native Linux runtime execution |
+| `python .git/validate-docs.py`; `git diff --check` | Passed before U5 commit | UTF-8, local links/anchors, placeholders and whitespace; not all remote sources refetched |
+
+The three ordinary-suite skips are `TestBrowserHarness`, `TestKeyProcessHelper`
+and `TestCrashHelper`. The browser harness ran separately; child-process helper
+entrypoints are invoked by their owning tests. They are not Linux/container passes.
+No application-script console errors appeared in the final browser flow. Unchanged
+user extensions produced their own CSP messages. T3 preview snapshot timed out
+twice; Chrome completed the equivalent flow. Test servers and RP child processes
+were stopped, the Chrome task tab closed, and disposable browser state removed.
+
+The source scan and final binary scans retain the unimported-module warning rather
+than suppress it. See [dependency evidence](../dependencies.md#selected-m21-set-and-evidence)
+for GO-2026-5932 and the stripped-binary scanner fallback. The module as a whole is
+not described as vulnerability-free. The final binaries have the following actual
+hashes; these supersede the historical M1 executable hashes, not its old evidence.
+
+| Ignored artifact | Bytes | SHA256 |
+|---|---|---|
+| `dist/qoauth-windows-amd64.exe` | 17699328 | `89920d9bdd2e7d323d29f5c8f9aa39bcfb4baf527a6e923bbb4de6a4bc66f855` |
+| `dist/qoauth-linux-amd64` | 17616966 | `56813b90e80ecc25e8ae3bb0ba3858d3dfe42745ac2ea06451661ed3cfc479ae` |
+
+M2.1 local commits, in order after accepted 0a77f7b:
+
+| Commit | Logical result |
+|---|---|
+| ef23df8 | Record A3 implementation authority |
+| 788a4f6 | Identity primitives, persistent keys and atomic SQLite authentication |
+| 0503b9d | Production OP/API/CLI and independent RP integration |
+| 7d090db | Duplicate/callback/consent/freshness and transaction regressions |
+| 761d456 | Private file ownership and SQLite sidecar validation |
+| 9cf4784 | Trusted proxy addresses and bounded anonymous state |
+| 0779231 | Commit bounded cleanup even when admission is denied |
+| 9484edb | Secure standards-based browser logout and RP subject checks |
+| 20098bf | Embedded authentication and management screens |
+| 6144c9c | Retain binary symbols for vulnerability verification |
+
+Remaining acceptance limits: native Linux/image runtime, second independent RP
+implementation and local OIDF profiles, backup/restore and key rotation, bounded
+authenticated-state/activity retention, disk pressure/password-cost measurements,
+broader password-blocklist assessment, full accessibility and distribution notices/
+SBOM. M2.1 does not implement public signup, SMTP, external IdPs, passkeys, enterprise
+protocols or a general authorization framework. UI/API are intentionally small:
+registration/assignment/disable are implemented; comprehensive client editing,
+secret rotation and arbitrary admin-role management are not implied.
+
+Actual key custody is a protected local plaintext `keys.json` containing PKCS#8 RSA
+and the AES root secret, with encrypted TOTP records in SQLite. File ownership/ACL
+checks are implemented; nested encryption under a co-located key was not added.
+The host administrator is trusted. This implementation choice and outstanding
+release gates are explicitly presented for parent review; no production-ready claim.
+
+## Proposed next slice for parent decision: M2.2 minimal maintenance
+
+This is a concrete proposal, not new implementation authorization. Parent owns the
+next decision; no final-user internal-plan approval wait is introduced. Continue
+the same single checklist, one process/issuer/SQLite database, embedded UI and main.
+
+1. **Stopped-service backup and safe restore.** Add small local CLI commands and
+   exclusive installation locking shared with serve/init/recovery. Snapshot only
+   while the installation is exclusively held; validate SQLite integrity/schema
+   and key binding. Restore into a separate private directory, never overwrite the
+   source installation by default. Before serving restored state, invalidate all
+   browser/restricted sessions, pending login/codes, grants/access/refresh tokens
+   and one-use recovery authorizations/codes. Require a short local maintenance
+   reconciliation of rolled-back users/passwords/MFA and client secrets/redirects/
+   assignments/scopes/key state; uncertain clients remain disabled. The old snapshot
+   cannot reveal changes made after it. No daemon, cloud backup or distributed epoch.
+   **Files:** `cmd/qoauth`, `internal/identity`, `internal/store`, the next ordered
+   migration only if persistent maintenance state is needed, focused tests and docs.
+   **Acceptance:** temporary snapshot -> revoke/use recovery code -> restore cannot
+   revive those credentials; unsafe paths, wrong/missing keys, corrupt/unsupported
+   databases and a running installation fail closed while preserving source files.
+   Reconciliation is required before ordinary serving can resume.
+2. **Local signing-key rotation.** Keep the existing AES root stable. Introduce only
+   the minimal persisted signing-key lifecycle needed to publish the new public key,
+   switch signing and retain old public keys for the documented token/cache/skew
+   window. Do not retain obsolete private signing material beyond its need or add
+   KMS/HSM/HA infrastructure. Missing/corrupt/interrupted state must fail closed.
+   **Files:** `internal/identity`, `internal/oidc`, `cmd/qoauth`, relevant storage
+   metadata if needed, protocol/restart tests and the existing runbook.
+   **Acceptance:** old/new ID tokens verify only within their valid periods, new
+   tokens use the selected key, restart preserves the selection, interrupted writes
+   preserve recoverable prior state, and retired keys disappear after the window.
+3. **Bounded maintenance and failure evidence.** Add small in-process or explicit
+   maintenance batches for expired authenticated sessions/tokens and local activity
+   history. Preserve consumed-code/refresh lineage for the entire required replay
+   detection period; no timer service or queue. Document SQLite disk-full/lock and
+   migration/backup failure behavior. **Files:** `internal/store`, focused tests,
+   CLI wiring where needed and existing operational/security docs.
+   **Acceptance:** batch bounds, valid-session preservation, durable family-replay
+   revocation, interrupted cleanup, disk/commit errors and restart recovery. Run
+   scoped tests/vet/race, applicable scans and target builds after relevant changes.
+
+Permissions needed for this proposal are repository edits/logical local main commits,
+temporary isolated synthetic files/credentials, existing tools and bounded loopback
+test processes. It does not require real user access, production backups, host ACL
+repair, TLS/firewall/account changes, system services, external writes or deployment.
+Testing against a real installation or creating a usable Linux/container runtime
+would require a separate concrete action and authorization; do not silently install
+or start system components. Until a permitted runtime exists, list those runtime
+checks as unexecuted. Second-RP/OIDF and final packaging gates remain visible release
+work, not a reason to add enterprise functions or claim M2.2 already validated them.
