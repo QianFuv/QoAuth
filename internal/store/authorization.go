@@ -1,0 +1,63 @@
+package store
+
+import (
+	"context"
+	"database/sql"
+	"time"
+)
+
+// LoginRequest keeps validated authorization input unbound until a real login.
+type LoginRequest struct {
+	ID, ClientID, Browser string
+	Payload               []byte
+	Expires               int64
+	Completed             bool
+}
+
+func (storage *Store) CreateLogin(ctx context.Context, request LoginRequest) error {
+	_, err := storage.db.ExecContext(ctx, `INSERT INTO login_requests(id,client_id,browser_digest,payload,expires) SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM browser_sessions WHERE digest=? AND revoked=0 AND expires>?)`, request.ID, request.ClientID, request.Browser, request.Payload, request.Expires, request.Browser, time.Now().Unix())
+	return err
+}
+func (storage *Store) Login(ctx context.Context, id string) (LoginRequest, error) {
+	var request LoginRequest
+	err := storage.db.QueryRowContext(ctx, `SELECT id,client_id,browser_digest,payload,expires,completed FROM login_requests WHERE id=? AND expires>?`, id, time.Now().Unix()).Scan(&request.ID, &request.ClientID, &request.Browser, &request.Payload, &request.Expires, &request.Completed)
+	if err == sql.ErrNoRows {
+		err = ErrInvalid
+	}
+	return request, err
+}
+func (storage *Store) CancelLogin(ctx context.Context, id, browser string) error {
+	result, err := storage.db.ExecContext(ctx, `DELETE FROM login_requests WHERE id=? AND browser_digest=? AND completed=0`, id, browser)
+	return one(result, err)
+}
+func (storage *Store) Consent(ctx context.Context, user, client string) ([]byte, error) {
+	var payload []byte
+	err := storage.db.QueryRowContext(ctx, `SELECT payload FROM consents WHERE user_id=? AND client_id=?`, user, client).Scan(&payload)
+	return payload, err
+}
+
+// CompleteLogin commits session binding, consent and the issuable request together.
+func (storage *Store) CompleteLogin(ctx context.Context, login LoginRequest, session Session, payload, consent []byte) error {
+	return storage.transaction(ctx, func(tx *sql.Tx) error {
+		if err := activeSession(ctx, tx, session.Digest, session.UserID, false); err != nil {
+			return err
+		}
+		if session.Expires <= time.Now().Unix() {
+			return ErrInvalid
+		}
+		if err := active(ctx, tx, session.UserID, login.ClientID); err != nil {
+			return err
+		}
+		result, err := tx.ExecContext(ctx, `UPDATE login_requests SET completed=1 WHERE id=? AND browser_digest=? AND completed=0 AND expires>?`, login.ID, session.Digest, time.Now().Unix())
+		if err = one(result, err); err != nil {
+			return err
+		}
+		if _, err = tx.ExecContext(ctx, `INSERT INTO consents(user_id,client_id,payload) VALUES(?,?,?) ON CONFLICT(user_id,client_id) DO UPDATE SET payload=excluded.payload`, session.UserID, login.ClientID, consent); err != nil {
+			return err
+		}
+		if _, err = tx.ExecContext(ctx, `INSERT INTO auth_requests(id,user_id,client_id,payload,expires,ready,session_digest) VALUES(?,?,?,?,?,1,?)`, login.ID, session.UserID, login.ClientID, payload, time.Now().Add(time.Minute).Unix(), session.Digest); err != nil {
+			return err
+		}
+		return activity(ctx, tx, "authorize", session.UserID)
+	})
+}

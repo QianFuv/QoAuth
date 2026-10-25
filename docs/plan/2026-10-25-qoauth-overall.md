@@ -244,8 +244,8 @@ but execution only with temporary isolated synthetic credentials/databases.
 
 | Task | Bounded scope | Commit | State |
 |---|---|---|---|
-| U1 | This acceptance/execution record | docs(plan): record M2.1 implementation approval | Done; commit follows |
-| U2 | Password/TOTP/key primitives, SQLite identity/session/client transitions, dependency locks and tests | feat(identity): persist credentials and enforce atomic session security | Pending |
+| U1 | This acceptance/execution record | docs(plan): record M2.1 implementation approval | Done: ef23df8 |
+| U2 | Password/TOTP/key primitives, SQLite identity/session/client transitions, dependency locks and tests | feat(identity): persist credentials and enforce atomic session security | Done; commit follows |
 | U3 | Production config/CLI/OP, account and management HTTP APIs, Go RP example and E2E/failure tests | feat(auth): connect local accounts to standard OIDC sessions | Pending |
 | U4 | Embedded Semi login/MFA/account/admin screens and browser verification | feat(ui): add local authentication and management screens | Pending |
 | U5 | Final security/build evidence, deployment limits and next bounded scope | docs(validation): record M2.1 authentication evidence | Pending |
@@ -258,3 +258,12 @@ not appear in logs. Run actual production handlers with standard Go RP E2E,
 negative tests, race, dependency scans and browser verification. Native Linux and
 container execution remain separately unverified unless a permitted runtime exists.
 No additional approval gate or enterprise framework is introduced.
+
+U2 evidence: 35 tests/subtests across the existing and new packages passed; scoped
+vet passed. Race checks passed 15 identity/storage tests. New checks cover private
+Windows key-file ACLs and restart, factor context binding, Argon2 parameter bounds,
+TOTP counter windows, 20-way MFA/recovery contention, real COMMIT rollback, stale
+password verification, restricted owner recovery and pending-code/family invalidation.
+The first tests exposed and corrected noncanonical Windows DACL comparison and
+modernc multi-statement positional parameter reuse; mixed parameter sets now use
+separate statements in the same transaction. No HTTP implementation pass is implied.

@@ -21,6 +21,9 @@ import (
 //go:embed migrations/001.sql
 var migration string
 
+//go:embed migrations/002.sql
+var identityMigration string
+
 var (
 	ErrInvalid = errors.New("invalid or inactive credential")
 	ErrReplay  = errors.New("credential reuse; grant revoked")
@@ -105,23 +108,30 @@ func (storage *Store) migrate(ctx context.Context) error {
 		if _, err := tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, digest TEXT NOT NULL)`); err != nil {
 			return err
 		}
-		var version int
-		var digest string
-		err := tx.QueryRowContext(ctx, `SELECT version,digest FROM schema_migrations ORDER BY version DESC LIMIT 1`).Scan(&version, &digest)
-		if err == nil {
-			if version != 1 || digest != Hash(migration) {
-				return errors.New("migration version/checksum mismatch")
+		var latest int
+		if err := tx.QueryRowContext(ctx, `SELECT COALESCE(MAX(version),0) FROM schema_migrations`).Scan(&latest); err != nil {
+			return err
+		}
+		if latest > 2 {
+			return errors.New("unsupported schema version")
+		}
+		for index, script := range []string{migration, identityMigration} {
+			version := index + 1
+			if version <= latest {
+				var digest string
+				if err := tx.QueryRowContext(ctx, `SELECT digest FROM schema_migrations WHERE version=?`, version).Scan(&digest); err != nil || digest != Hash(script) {
+					return errors.New("migration version/checksum mismatch")
+				}
+				continue
 			}
-			return nil
+			if _, err := tx.ExecContext(ctx, script); err != nil {
+				return err
+			}
+			if _, err := tx.ExecContext(ctx, `INSERT INTO schema_migrations VALUES(?,?)`, version, Hash(script)); err != nil {
+				return err
+			}
 		}
-		if !errors.Is(err, sql.ErrNoRows) {
-			return err
-		}
-		if _, err = tx.ExecContext(ctx, migration); err != nil {
-			return err
-		}
-		_, err = tx.ExecContext(ctx, `INSERT INTO schema_migrations VALUES(1,?)`, Hash(migration))
-		return err
+		return nil
 	})
 }
 
@@ -263,7 +273,7 @@ func (storage *Store) RequestByCode(ctx context.Context, code string) (Request, 
 func (storage *Store) request(ctx context.Context, column, value string) (Request, error) {
 	var request Request
 	var expires int64
-	query := `SELECT r.id,r.user_id,r.client_id,r.payload,r.expires,r.ready,r.consumed FROM auth_requests r JOIN users u ON u.id=r.user_id JOIN clients c ON c.id=r.client_id JOIN assignments a ON a.user_id=r.user_id AND a.client_id=r.client_id WHERE ` + column + `=? AND r.expires>? AND u.enabled=1 AND c.enabled=1`
+	query := `SELECT r.id,r.user_id,r.client_id,r.payload,r.expires,r.ready,r.consumed FROM auth_requests r JOIN users u ON u.id=r.user_id JOIN clients c ON c.id=r.client_id JOIN assignments a ON a.user_id=r.user_id AND a.client_id=r.client_id WHERE ` + column + `=? AND r.expires>? AND u.enabled=1 AND c.enabled=1 AND (r.session_digest='' OR EXISTS(SELECT 1 FROM browser_sessions s JOIN accounts ac ON ac.user_id=s.user_id WHERE s.digest=r.session_digest AND s.revoked=0 AND s.version=ac.version AND s.assurance=1 AND s.user_id=r.user_id AND (ac.admin=0 OR ac.factor IS NOT NULL)))`
 	err := storage.db.QueryRowContext(ctx, query, value, time.Now().Unix()).Scan(&request.ID, &request.UserID, &request.ClientID, &request.Payload, &expires, &request.Ready, &request.Consumed)
 	request.Expires = time.Unix(expires, 0)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -277,11 +287,11 @@ func (storage *Store) ExchangeCode(ctx context.Context, id, client string, paylo
 	var issued Issued
 	replay := false
 	err := storage.transaction(ctx, func(tx *sql.Tx) error {
-		var user, storedClient string
+		var user, storedClient, session string
 		var ready, consumed bool
 		var expires int64
 		var code sql.NullString
-		if err := tx.QueryRowContext(ctx, `SELECT user_id,client_id,ready,consumed,expires,code_hash FROM auth_requests WHERE id=?`, id).Scan(&user, &storedClient, &ready, &consumed, &expires, &code); err != nil {
+		if err := tx.QueryRowContext(ctx, `SELECT user_id,client_id,ready,consumed,expires,code_hash,session_digest FROM auth_requests WHERE id=?`, id).Scan(&user, &storedClient, &ready, &consumed, &expires, &code, &session); err != nil {
 			return ErrInvalid
 		}
 		if storedClient != client || !ready || !code.Valid || expires <= time.Now().Unix() {
@@ -289,6 +299,11 @@ func (storage *Store) ExchangeCode(ctx context.Context, id, client string, paylo
 		}
 		if err := active(ctx, tx, user, client); err != nil {
 			return err
+		}
+		if session != "" {
+			if err := activeSession(ctx, tx, session, user, false); err != nil {
+				return err
+			}
 		}
 		if consumed {
 			if _, err := tx.ExecContext(ctx, `UPDATE grants SET revoked=1 WHERE request_id=?`, id); err != nil {
@@ -333,7 +348,7 @@ func issue(ctx context.Context, tx *sql.Tx, grant string, payload []byte, refres
 	return issued, err
 }
 
-const tokenQuery = `SELECT t.grant_id,g.user_id,g.client_id,t.kind,t.payload,t.expires,t.consumed FROM tokens t JOIN grants g ON g.id=t.grant_id JOIN users u ON u.id=g.user_id JOIN clients c ON c.id=g.client_id JOIN assignments a ON a.user_id=g.user_id AND a.client_id=g.client_id WHERE t.digest=? AND g.revoked=0 AND g.expires>? AND t.expires>? AND u.enabled=1 AND c.enabled=1`
+const tokenQuery = `SELECT t.grant_id,g.user_id,g.client_id,t.kind,t.payload,t.expires,t.consumed FROM tokens t JOIN grants g ON g.id=t.grant_id JOIN auth_requests r ON r.id=g.request_id JOIN users u ON u.id=g.user_id JOIN clients c ON c.id=g.client_id JOIN assignments a ON a.user_id=g.user_id AND a.client_id=g.client_id WHERE t.digest=? AND g.revoked=0 AND g.expires>? AND t.expires>? AND u.enabled=1 AND c.enabled=1 AND (r.session_digest='' OR EXISTS(SELECT 1 FROM browser_sessions s JOIN accounts ac ON ac.user_id=s.user_id WHERE s.digest=r.session_digest AND s.revoked=0 AND s.version=ac.version AND s.assurance=1 AND s.user_id=g.user_id AND (ac.admin=0 OR ac.factor IS NOT NULL)))`
 
 func scanToken(row *sql.Row) (Token, error) {
 	var token Token
