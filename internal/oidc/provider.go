@@ -21,7 +21,7 @@ func currentSession(ctx context.Context) store.Session {
 	return session
 }
 
-type consent struct{ Scopes, Audiences []string }
+type consent = store.Consent
 
 func (s *Server) hasConsent(ctx context.Context, user string, data tokenData) bool {
 	payload, err := s.database.Consent(ctx, user, data.Request.ClientID)
@@ -54,7 +54,7 @@ func (s *Server) eligible(ctx context.Context, session store.Session, data token
 	}
 	if data.Request.MaxAge != nil {
 		if *data.Request.MaxAge == 0 {
-			return session.Digest != data.InitialSession
+			return session.AuthEvent != "" && session.AuthEvent != data.InitialAuthEvent
 		}
 		if uint64(time.Now().Unix()-session.AuthTime) > uint64(*data.Request.MaxAge) {
 			return false
@@ -70,11 +70,19 @@ func (s *Server) CreateAuthRequest(ctx context.Context, request *protocol.AuthRe
 	if err != nil {
 		return nil, protocol.ErrInvalidClient()
 	}
+	for _, scope := range request.Scopes {
+		if !contains(app.Scopes, scope) {
+			return nil, protocol.ErrInvalidScope()
+		}
+	}
+	if app.Resource || !contains(app.Redirects, request.RedirectURI) {
+		return nil, protocol.ErrInvalidRequest()
+	}
 	session := currentSession(ctx)
 	if session.Digest == "" {
 		return nil, protocol.ErrServerError()
 	}
-	data := tokenData{Request: *request, Resources: app.Audiences, InitialSession: session.Digest}
+	data := tokenData{Request: *request, Resources: app.Audiences, InitialAuthEvent: session.AuthEvent}
 	if slices.Contains(request.Prompt, protocol.PromptNone) {
 		if !s.eligible(ctx, session, data) {
 			return nil, protocol.ErrLoginRequired()

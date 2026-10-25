@@ -246,7 +246,7 @@ but execution only with temporary isolated synthetic credentials/databases.
 |---|---|---|---|
 | U1 | This acceptance/execution record | docs(plan): record M2.1 implementation approval | Done: ef23df8 |
 | U2 | Password/TOTP/key primitives, SQLite identity/session/client transitions, dependency locks and tests | feat(identity): persist credentials and enforce atomic session security | Done: 788a4f6 |
-| U3 | Production config/CLI/OP, account/management APIs, Go RP, private-directory/store support and container command wiring | feat(auth): connect local accounts to standard OIDC sessions | Done; commit follows |
+| U3 | Production config/CLI/OP, account/management APIs, Go RP, private-directory/store support and container command wiring | feat(auth): connect local accounts to standard OIDC sessions | Done: 0503b9d |
 | U4 | Embedded Semi login/MFA/account/admin screens and browser verification | feat(ui): add local authentication and management screens | Pending |
 | U5 | Final security/build evidence, deployment limits and next bounded scope | docs(validation): record M2.1 authentication evidence | Pending |
 
@@ -278,3 +278,14 @@ RP logout. A separate process loads the same temporary keys and decrypts saved
 synthetic state; key loss never reopens initialization. Log/error/activity canaries
 are absent. U3 also wires container data/issuer arguments required by the new CLI;
 the image is still not built or run. Browser UI and final graph scans remain U4/U5.
+
+U3 review correction (A3 scope): `fix(auth): enforce unambiguous authorization boundaries`
+contains only production protocol/storage code, migration 003, regression tests and
+this record. Independent reviews of 0503b9d found duplicate-parameter decoding,
+callback method confusion and consent-withdrawal races. New tests reproduced the
+first two failures (unexpected HTTP 302); the corrections now pass 41 scoped
+OIDC/store tests. Automatic completion rechecks consent in its transaction; explicit
+password-authentication events distinguish fresh login from cookie/MFA rotation.
+Deferred foreign-key COMMIT failures prove consent/completion and recovery rollback.
+The remaining review findings (resource limits and file ownership/privacy) are being
+handled before final validation. No production readiness claim is made.

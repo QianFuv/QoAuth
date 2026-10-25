@@ -339,7 +339,7 @@ func (s *Server) interactionInfo(response http.ResponseWriter, request *http.Req
 	}
 	writeJSON(response, map[string]any{"request": login.ID, "application": app.Name, "scopes": data.Request.Scopes, "audiences": data.Resources, "needs_login": !s.eligible(request.Context(), session, data), "needs_consent": contains(data.Request.Prompt, "consent") || !s.hasConsent(request.Context(), session.UserID, data)})
 }
-func (s *Server) complete(request *http.Request, login store.LoginRequest, data tokenData) error {
+func (s *Server) complete(request *http.Request, login store.LoginRequest, data tokenData, explicitApproval bool) error {
 	session := currentSession(request.Context())
 	if !s.eligible(request.Context(), session, data) {
 		return store.ErrInvalid
@@ -356,7 +356,7 @@ func (s *Server) complete(request *http.Request, login store.LoginRequest, data 
 		return err
 	}
 	approved, _ := json.Marshal(consent{Scopes: data.Request.Scopes, Audiences: data.Resources})
-	return s.database.CompleteLogin(request.Context(), login, session, payload, approved)
+	return s.database.CompleteLogin(request.Context(), login, session, payload, approved, explicitApproval)
 }
 func (s *Server) callback(id string) string {
 	return op.AuthCallbackURL(s.provider)(op.ContextWithIssuer(context.Background(), s.config.Issuer), id)
@@ -379,7 +379,7 @@ func (s *Server) loginPage(response http.ResponseWriter, request *http.Request) 
 	}
 	session := currentSession(request.Context())
 	if s.eligible(request.Context(), session, data) && !contains(data.Request.Prompt, "consent") && s.hasConsent(request.Context(), session.UserID, data) {
-		if err = s.complete(request, login, data); err != nil {
+		if err = s.complete(request, login, data, false); err != nil {
 			op.RequestError(response, request, protocol.ErrAccessDenied(), nil)
 			return
 		}
@@ -417,7 +417,7 @@ func (s *Server) consentAction(response http.ResponseWriter, request *http.Reque
 		writeJSON(response, map[string]string{"redirect": redirect.String()})
 		return
 	}
-	if err = s.complete(request, login, data); err != nil {
+	if err = s.complete(request, login, data, true); err != nil {
 		http.Error(response, "authorization rejected", 403)
 		return
 	}

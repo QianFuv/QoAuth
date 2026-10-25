@@ -128,6 +128,16 @@ func (s *Server) ServeHTTP(response http.ResponseWriter, request *http.Request) 
 		return
 	}
 	path := request.URL.Path
+	if path == "/authorize/callback" && request.Method != http.MethodGet {
+		http.Error(response, "method not allowed", 405)
+		return
+	}
+	if path == "/authorize" || path == "/authorize/callback" || path == "/oauth/token" || path == "/revoke" || path == "/oauth/introspect" || path == "/end_session" {
+		if _, err := url.ParseQuery(request.URL.RawQuery); err != nil || request.ParseForm() != nil || duplicateParameters(request.Form) {
+			http.Error(response, "ambiguous protocol parameters", 400)
+			return
+		}
+	}
 	if path == "/.well-known/openid-configuration" {
 		metadata := op.CreateDiscoveryConfig(op.ContextWithIssuer(request.Context(), s.config.Issuer), s.provider, s)
 		metadata.ResponseTypesSupported = []string{"code"}
@@ -185,6 +195,10 @@ func (s *Server) ServeHTTP(response http.ResponseWriter, request *http.Request) 
 		return
 	}
 	if path == "/authorize/callback" {
+		if len(request.URL.Query()) != 1 || len(request.URL.Query()["id"]) != 1 {
+			http.Error(response, "invalid authorization transaction", 400)
+			return
+		}
 		login, err := s.database.Login(request.Context(), request.URL.Query().Get("id"))
 		if err != nil || !login.Completed || login.Browser != currentSession(request.Context()).Digest {
 			http.Error(response, "invalid authorization transaction", 400)
@@ -242,6 +256,15 @@ func (s *Server) ServeHTTP(response http.ResponseWriter, request *http.Request) 
 		return
 	}
 	s.provider.ServeHTTP(response, request)
+}
+
+func duplicateParameters(values url.Values) bool {
+	for _, entries := range values {
+		if len(entries) != 1 {
+			return true
+		}
+	}
+	return false
 }
 
 func contains(values []string, wanted string) bool {

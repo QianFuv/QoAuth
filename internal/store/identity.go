@@ -114,22 +114,22 @@ func (storage *Store) AddAccount(ctx context.Context, name, password, actor stri
 
 // Session is a revocable browser record; its raw cookie handle is never stored.
 type Session struct {
-	Digest, UserID, Csrf string
-	Version              int
-	Assurance            bool
-	AuthTime, Expires    int64
+	Digest, UserID, Csrf, AuthEvent string
+	Version                         int
+	Assurance                       bool
+	AuthTime, Expires               int64
 }
 
 func scanSession(row interface{ Scan(...any) error }) (Session, error) {
 	var session Session
-	err := row.Scan(&session.Digest, &session.UserID, &session.Csrf, &session.Version, &session.Assurance, &session.AuthTime, &session.Expires)
+	err := row.Scan(&session.Digest, &session.UserID, &session.Csrf, &session.Version, &session.Assurance, &session.AuthTime, &session.Expires, &session.AuthEvent)
 	if errors.Is(err, sql.ErrNoRows) {
 		err = ErrInvalid
 	}
 	return session, err
 }
 func (storage *Store) Session(ctx context.Context, handle string) (Session, error) {
-	return scanSession(storage.db.QueryRowContext(ctx, `SELECT s.digest,COALESCE(s.user_id,''),s.csrf,s.version,s.assurance,s.auth_time,s.expires FROM browser_sessions s LEFT JOIN accounts a ON a.user_id=s.user_id LEFT JOIN users u ON u.id=s.user_id WHERE s.digest=? AND s.revoked=0 AND s.expires>? AND (s.user_id IS NULL OR (u.enabled=1 AND a.version=s.version))`, Hash(handle), time.Now().Unix()))
+	return scanSession(storage.db.QueryRowContext(ctx, `SELECT s.digest,COALESCE(s.user_id,''),s.csrf,s.version,s.assurance,s.auth_time,s.expires,s.auth_event FROM browser_sessions s LEFT JOIN accounts a ON a.user_id=s.user_id LEFT JOIN users u ON u.id=s.user_id WHERE s.digest=? AND s.revoked=0 AND s.expires>? AND (s.user_id IS NULL OR (u.enabled=1 AND a.version=s.version))`, Hash(handle), time.Now().Unix()))
 }
 func (storage *Store) AnonymousSession(ctx context.Context) (string, error) {
 	handle := NewHandle()
@@ -164,7 +164,7 @@ func revokeSession(ctx context.Context, tx *sql.Tx, digest string) error {
 	_, err := tx.ExecContext(ctx, `UPDATE browser_sessions SET revoked=1 WHERE digest=?; UPDATE grants SET revoked=1 WHERE request_id IN (SELECT id FROM auth_requests WHERE session_digest=?); UPDATE auth_requests SET consumed=1 WHERE session_digest=?`, digest, digest, digest)
 	return err
 }
-func installSession(ctx context.Context, tx *sql.Tx, old, user string, version int, assurance bool, authTime int64) (string, error) {
+func installSession(ctx context.Context, tx *sql.Tx, old, user string, version int, assurance bool, authTime int64, authEvent string) (string, error) {
 	var enabled, liveVersion int
 	if err := tx.QueryRowContext(ctx, `SELECT u.enabled,a.version FROM accounts a JOIN users u ON u.id=a.user_id WHERE user_id=?`, user).Scan(&enabled, &liveVersion); err != nil || enabled != 1 || liveVersion != version {
 		return "", ErrInvalid
@@ -178,7 +178,7 @@ func installSession(ctx context.Context, tx *sql.Tx, old, user string, version i
 	if assurance {
 		lifetime = 12 * time.Hour
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO browser_sessions(digest,user_id,csrf,version,assurance,auth_time,expires) VALUES(?,?,?,?,?,?,?)`, Hash(handle), user, NewHandle(), version, assurance, authTime, time.Now().Add(lifetime).Unix()); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO browser_sessions(digest,user_id,csrf,version,assurance,auth_time,expires,auth_event) VALUES(?,?,?,?,?,?,?,?)`, Hash(handle), user, NewHandle(), version, assurance, authTime, time.Now().Add(lifetime).Unix(), authEvent); err != nil {
 		return "", err
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE login_requests SET browser_digest=? WHERE browser_digest=? AND completed=0`, Hash(handle), old); err != nil {
@@ -195,7 +195,7 @@ func (storage *Store) PasswordSession(ctx context.Context, old string, account A
 	var handle string
 	err := storage.transaction(ctx, func(tx *sql.Tx) error {
 		var err error
-		handle, err = installSession(ctx, tx, old, account.ID, account.Version, !account.Admin && !account.RequireMfa && len(account.Factor) == 0, time.Now().Unix())
+		handle, err = installSession(ctx, tx, old, account.ID, account.Version, !account.Admin && !account.RequireMfa && len(account.Factor) == 0, time.Now().Unix(), NewHandle())
 		if err != nil {
 			return err
 		}
@@ -221,7 +221,7 @@ func (storage *Store) RevokeSession(ctx context.Context, digest, user string) er
 	})
 }
 func (storage *Store) Sessions(ctx context.Context, user string) ([]Session, error) {
-	rows, err := storage.db.QueryContext(ctx, `SELECT digest,user_id,csrf,version,assurance,auth_time,expires FROM browser_sessions WHERE user_id=? AND revoked=0 AND expires>?`, user, time.Now().Unix())
+	rows, err := storage.db.QueryContext(ctx, `SELECT digest,user_id,csrf,version,assurance,auth_time,expires,auth_event FROM browser_sessions WHERE user_id=? AND revoked=0 AND expires>?`, user, time.Now().Unix())
 	if err != nil {
 		return nil, err
 	}
@@ -334,7 +334,7 @@ func (storage *Store) ConfirmFactor(ctx context.Context, session Session, sealed
 		if _, err = tx.ExecContext(ctx, `UPDATE browser_sessions SET revoked=0 WHERE digest=?`, session.Digest); err != nil {
 			return err
 		}
-		handle, err = installSession(ctx, tx, session.Digest, session.UserID, session.Version+1, true, session.AuthTime)
+		handle, err = installSession(ctx, tx, session.Digest, session.UserID, session.Version+1, true, session.AuthTime, session.AuthEvent)
 		if err != nil {
 			return err
 		}
@@ -355,7 +355,7 @@ func (storage *Store) ProveFactor(ctx context.Context, session Session, sealed [
 		if err = one(result, err); err != nil {
 			return err
 		}
-		handle, err = installSession(ctx, tx, session.Digest, session.UserID, session.Version, true, session.AuthTime)
+		handle, err = installSession(ctx, tx, session.Digest, session.UserID, session.Version, true, session.AuthTime, session.AuthEvent)
 		if err != nil {
 			return err
 		}
@@ -387,7 +387,7 @@ func (storage *Store) RecoverFactor(ctx context.Context, session Session, code s
 		if _, err = tx.ExecContext(ctx, `UPDATE browser_sessions SET revoked=0 WHERE digest=?`, session.Digest); err != nil {
 			return err
 		}
-		handle, err = installSession(ctx, tx, session.Digest, session.UserID, session.Version+1, false, session.AuthTime)
+		handle, err = installSession(ctx, tx, session.Digest, session.UserID, session.Version+1, false, session.AuthTime, session.AuthEvent)
 		if err != nil {
 			return err
 		}

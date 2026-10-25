@@ -60,12 +60,12 @@ func (c *client) IDTokenUserinfoClaimsAssertion() bool { return false }
 func (c *client) ClockSkew() time.Duration             { return 0 }
 
 type tokenData struct {
-	Request        protocol.AuthRequest
-	User           string
-	AuthTime       time.Time
-	Mfa            bool
-	Resources      []string
-	InitialSession string
+	Request          protocol.AuthRequest
+	User             string
+	AuthTime         time.Time
+	Mfa              bool
+	Resources        []string
+	InitialAuthEvent string
 }
 
 func (data *tokenData) GetSubject() string     { return data.User }

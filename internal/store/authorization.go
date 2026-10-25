@@ -3,6 +3,8 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
+	"slices"
 	"time"
 )
 
@@ -37,7 +39,7 @@ func (storage *Store) Consent(ctx context.Context, user, client string) ([]byte,
 }
 
 // CompleteLogin commits session binding, consent and the issuable request together.
-func (storage *Store) CompleteLogin(ctx context.Context, login LoginRequest, session Session, payload, consent []byte) error {
+func (storage *Store) CompleteLogin(ctx context.Context, login LoginRequest, session Session, payload, consent []byte, explicitApproval bool) error {
 	return storage.transaction(ctx, func(tx *sql.Tx) error {
 		if err := activeSession(ctx, tx, session.Digest, session.UserID, false); err != nil {
 			return err
@@ -52,12 +54,40 @@ func (storage *Store) CompleteLogin(ctx context.Context, login LoginRequest, ses
 		if err = one(result, err); err != nil {
 			return err
 		}
-		if _, err = tx.ExecContext(ctx, `INSERT INTO consents(user_id,client_id,payload) VALUES(?,?,?) ON CONFLICT(user_id,client_id) DO UPDATE SET payload=excluded.payload`, session.UserID, login.ClientID, consent); err != nil {
-			return err
+		if explicitApproval {
+			if _, err = tx.ExecContext(ctx, `INSERT INTO consents(user_id,client_id,payload) VALUES(?,?,?) ON CONFLICT(user_id,client_id) DO UPDATE SET payload=excluded.payload`, session.UserID, login.ClientID, consent); err != nil {
+				return err
+			}
+		} else {
+			var existing []byte
+			if err = tx.QueryRowContext(ctx, `SELECT payload FROM consents WHERE user_id=? AND client_id=?`, session.UserID, login.ClientID).Scan(&existing); err != nil || !consentCovers(existing, consent) {
+				return ErrInvalid
+			}
 		}
 		if _, err = tx.ExecContext(ctx, `INSERT INTO auth_requests(id,user_id,client_id,payload,expires,ready,session_digest) VALUES(?,?,?,?,?,1,?)`, login.ID, session.UserID, login.ClientID, payload, time.Now().Add(time.Minute).Unix(), session.Digest); err != nil {
 			return err
 		}
 		return activity(ctx, tx, "authorize", session.UserID)
 	})
+}
+
+// Consent is the exact set approved for one application and its resources.
+type Consent struct{ Scopes, Audiences []string }
+
+func consentCovers(existing, requested []byte) bool {
+	var approved, required Consent
+	if json.Unmarshal(existing, &approved) != nil || json.Unmarshal(requested, &required) != nil {
+		return false
+	}
+	for _, scope := range required.Scopes {
+		if !slices.Contains(approved.Scopes, scope) {
+			return false
+		}
+	}
+	for _, audience := range required.Audiences {
+		if !slices.Contains(approved.Audiences, audience) {
+			return false
+		}
+	}
+	return true
 }

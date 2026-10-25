@@ -64,7 +64,7 @@ func TestProductionInvalidationReachesCodesAndFamilies(t *testing.T) {
 		if err := storage.CreateLogin(t.Context(), request); err != nil {
 			t.Fatal(err)
 		}
-		if err := storage.CompleteLogin(t.Context(), request, session, []byte(`{}`), []byte(`{}`)); err != nil {
+		if err := storage.CompleteLogin(t.Context(), request, session, []byte(`{}`), []byte(`{}`), true); err != nil {
 			t.Fatal(err)
 		}
 		if err := storage.SaveCode(t.Context(), request.ID, NewHandle()); err != nil {
@@ -89,7 +89,7 @@ func TestProductionInvalidationReachesCodesAndFamilies(t *testing.T) {
 	if _, err = storage.ExchangeCode(t.Context(), pending, "rp", []byte(`{}`), true); err == nil {
 		t.Fatal("password reset retained pending code")
 	}
-	if err = storage.CompleteLogin(t.Context(), LoginRequest{ID: NewHandle(), ClientID: "rp"}, session, []byte(`{}`), []byte(`{}`)); err == nil {
+	if err = storage.CompleteLogin(t.Context(), LoginRequest{ID: NewHandle(), ClientID: "rp"}, session, []byte(`{}`), []byte(`{}`), true); err == nil {
 		t.Fatal("stale session completed authorization")
 	}
 }
