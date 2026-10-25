@@ -25,6 +25,18 @@ func (storage *Store) InstallationState(ctx context.Context) (InstallationState,
 	return state, err
 }
 
+// Ready performs one bounded read without adopting an issuer or changing installation state.
+func (storage *Store) Ready(ctx context.Context, binding, issuer string) error {
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+	var available int
+	err := storage.db.QueryRowContext(ctx, `SELECT 1 FROM installation WHERE id=1 AND key_id=? AND issuer=? AND issuer<>'' AND maintenance=0 AND ready_after<=?`, binding, issuer, time.Now().Unix()).Scan(&available)
+	if err != nil || available != 1 {
+		return ErrInvalid
+	}
+	return nil
+}
+
 // CheckServing enforces persisted issuer identity and restored-state readiness.
 func (storage *Store) CheckServing(ctx context.Context, binding, issuer string, now time.Time) error {
 	return storage.transaction(ctx, func(tx *sql.Tx) error {

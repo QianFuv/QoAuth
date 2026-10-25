@@ -139,6 +139,20 @@ func (s *Server) ServeHTTP(response http.ResponseWriter, request *http.Request) 
 		http.Error(response, "invalid proxy client address", 400)
 		return
 	}
+	if path == "/readyz" {
+		if request.Method != http.MethodGet {
+			response.Header().Set("Allow", http.MethodGet)
+			http.Error(response, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		isReady := s.database.Ready(request.Context(), s.keys.Binding(), s.config.Issuer) == nil
+		response.Header().Set("Content-Type", "application/json")
+		if !isReady {
+			response.WriteHeader(http.StatusServiceUnavailable)
+		}
+		writeJSON(response, map[string]bool{"ready": isReady})
+		return
+	}
 	if path == "/authorize/callback" && request.Method != http.MethodGet {
 		http.Error(response, "method not allowed", 405)
 		return

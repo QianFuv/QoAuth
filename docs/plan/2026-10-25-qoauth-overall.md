@@ -691,8 +691,8 @@ This supersedes the prior proposal wait. No further internal-plan approval is ne
 | C0 | A5 and this single checklist | docs(plan): record final closure authorization | Committed f0e2227 |
 | C1 | Existing password-policy consistency, shared new-password field, precise safe errors | fix(identity): align password policy across entry points | Committed d50d81d |
 | C2 | Existing administrator reset API/UI with fresh MFA and CSRF, preserved factor/invalidation | feat(admin): expose controlled password reset | Committed 6f4499e |
-| C3 | Disabled-client list/safe settings and explicit review-prefill, no restored grants or secrets | feat(admin): review disabled application settings | Done; commit follows |
-| C4 | Minimal bounded readiness with generic public status and store/key/install checks | feat(health): expose bounded readiness checks | Pending |
+| C3 | Disabled-client list/safe settings and explicit review-prefill, no restored grants or secrets | feat(admin): review disabled application settings | Committed 54e34a5 |
+| C4 | Minimal bounded readiness with generic public status and store/key/install checks | feat(health): expose bounded readiness checks | Done; commit follows |
 | C5 | Second pinned RP implementation and focused local protocol checks | test(oidc): verify a second standard relying party | Pending |
 | C6 | Existing phase-version restore/upgrade drill, bounded load, browser/accessibility evidence | test(validation): exercise release closure scenarios | Pending |
 | C7 | Versioned local binaries, graph/NOTICE/license/SBOM inventory and packaging script | build(distribution): assemble versioned local artifacts | Pending |
@@ -734,3 +734,10 @@ exclude disabled clients. Replacement still generates new confidential credentia
 clears consent/assignments and revokes old codes/grants. Targeted API/client-generation
 tests and frontend build passed. The initial test assumed 400 for missing assignment;
 the existing policy correctly returns 403, now asserted. Browser acceptance remains C6.
+
+C4: GET /readyz makes one read-only query with a one-second context deadline.
+It checks available DB, active key binding, exact persisted issuer, maintenance and
+restore quarantine. It creates no cookie/session, returns only ready true/false,
+and rejects other methods. Two targeted tests passed, including exhausted-pool
+timeout, cancellation, wrong binding/issuer, restore blocking and closed storage.
+This is readiness, not an external TLS/proxy probe or exhaustive integrity scan.
