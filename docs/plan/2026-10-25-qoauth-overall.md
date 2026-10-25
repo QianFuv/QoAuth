@@ -694,8 +694,8 @@ This supersedes the prior proposal wait. No further internal-plan approval is ne
 | C3 | Disabled-client list/safe settings and explicit review-prefill, no restored grants or secrets | feat(admin): review disabled application settings | Committed 54e34a5 |
 | C4 | Minimal bounded readiness with generic public status and store/key/install checks | feat(health): expose bounded readiness checks | Committed b240fc3 |
 | C5 | Second pinned RP implementation and focused local protocol checks | test(oidc): verify a second standard relying party | Committed 9c4855e |
-| C6 | Existing phase-version restore/upgrade drill, bounded load, browser/accessibility evidence | test(validation): exercise release closure scenarios | Done; commit follows |
-| C7 | Versioned local binaries, graph/NOTICE/license/SBOM inventory and packaging script | build(distribution): assemble versioned local artifacts | Pending |
+| C6 | Existing phase-version restore/upgrade drill, bounded load, browser/accessibility evidence | test(validation): exercise release closure scenarios | Committed 5312400 |
+| C7 | Versioned local binaries, graph/NOTICE/license/SBOM inventory and packaging script | build(distribution): assemble versioned local artifacts | Done; clean artifact build follows commit |
 | C8 | Actual evidence, runbook and finite remaining gates; no next feature expansion | docs(validation): close bounded delivery checks | Pending |
 
 A5 authorizes necessary in-scope fixes and their separate logical commits; record
@@ -777,9 +777,26 @@ The first process exited 1 only during temporary cleanup: Python's SQLite contex
 manager did not close its handle. Explicit closing and post-cleanup result publication
 correct that script; a focused Windows connection/open/read/close/delete check passed,
 and the exact task-owned leftover was removed. Flow assertions above are reused; a
-full rerun is being collected as additional final evidence. No product recovery bypass.
+full rerun exited 0 and passed every flow assertion and temporary cleanup. Evidence is
+.cache/final-upgrade-rerun.json. No product recovery bypass.
 
 Final Go race suite currently passes 135 tests/subtests in eight packages with six
 opt-in/helper skips; go vet passed. Source govulncheck found zero affected symbols/imported
 packages, with the previously documented unused OpenPGP module advisory. npm audit zero.
 Evidence: .cache/final-{load,race,browser-validation,upgrade}.json and final-admin.png.
+C7: Vite now emits the actual chunk-component license inventory. The standard-library
+Python packager binds current revision/toolchain/module versions and embedded asset
+bytes to each executable. It preserves original root notices, JOSE JSON and three libc
+inline supplements, Go standard-library notices, CSS/helper provenance, and a separate
+build/development graph. Final packaging requires clean committed inputs; dirty preview
+packaging is explicitly labeled. No source license is selected on the user's behalf.
+
+Local dirty-build verification passed both target builds, TypeScript/Vite, official
+SPDX 2.3.1 JSON-schema validation through PowerShell Test-Json, every notice/manifest
+hash, ZIP integrity/explicit contents/Linux executable bits, dirty-final rejection and
+missing-required-notice rejection. Windows has 30 Go dependency modules, 43 SPDX packages
+and 60 notice records; Linux has 29, 42 and 59 respectively. Both include eleven frontend
+components counting the CSS theme and generated Vite helper supplements. These are
+artifact inventories, not a claim that whole dependency modules are linked. Clean final
+artifacts and binary scans are collected after this commit; validation archives under
+.cache/package-validation-531 are not final deliverables.

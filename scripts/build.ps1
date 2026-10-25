@@ -1,3 +1,4 @@
+param([switch]$UseInstalledFrontend)
 $ErrorActionPreference = 'Stop'
 $repository = Split-Path $PSScriptRoot -Parent
 $priorEnvironment = @{}
@@ -8,8 +9,10 @@ Push-Location $repository
 try {
     Push-Location web
     try {
-        npm ci
-        if ($LASTEXITCODE -ne 0) { throw 'npm ci failed' }
+        if (-not $UseInstalledFrontend) {
+            npm ci
+            if ($LASTEXITCODE -ne 0) { throw 'npm ci failed' }
+        }
         npm run build
         if ($LASTEXITCODE -ne 0) { throw 'Frontend build failed' }
     } finally { Pop-Location }
@@ -22,6 +25,8 @@ try {
         go build -trimpath -ldflags='-w' -o "dist/qoauth-$target-amd64$extension" ./cmd/qoauth
         if ($LASTEXITCODE -ne 0) { throw "$target build failed" }
     }
+    python scripts/package-local.py
+    if ($LASTEXITCODE -ne 0) { throw 'Local packaging failed; inspect artifact provenance and notices' }
 } finally {
     foreach ($name in $priorEnvironment.Keys) {
         [Environment]::SetEnvironmentVariable($name, $priorEnvironment[$name], 'Process')
