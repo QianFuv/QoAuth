@@ -109,7 +109,7 @@ func (s *Server) api(response http.ResponseWriter, request *http.Request) {
 		return
 	}
 	if path == "/api/login" {
-		remote, _, _ := net.SplitHostPort(request.RemoteAddr)
+		remote, _ := s.clientAddress(request)
 		if !s.limits.allow("network:"+remote, 30) || !s.limits.allow("login:"+strings.ToLower(input.Username), 10) {
 			http.Error(response, "try again later", 429)
 			return

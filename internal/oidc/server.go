@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"strings"
 	"sync"
@@ -23,9 +24,15 @@ import (
 type Config struct {
 	Issuer          string
 	DevelopmentHTTP bool
+	TrustedProxy    string
 }
 
 func (config Config) Validate() error {
+	if config.TrustedProxy != "" {
+		if _, err := netip.ParseAddr(config.TrustedProxy); err != nil {
+			return errors.New("trusted proxy must be one explicit IP address")
+		}
+	}
 	parsed, err := url.Parse(config.Issuer)
 	if err != nil || parsed.Host == "" || parsed.User != nil || parsed.Path != "" || parsed.RawQuery != "" || parsed.Fragment != "" {
 		return errors.New("issuer must be a canonical origin without a path")
@@ -96,7 +103,7 @@ func (s *Server) session(request *http.Request) (store.Session, error) {
 func (s *Server) browserContext(response http.ResponseWriter, request *http.Request, create bool) (*http.Request, error) {
 	session, err := s.session(request)
 	if err != nil && create {
-		remote, _, _ := net.SplitHostPort(request.RemoteAddr)
+		remote, _ := s.clientAddress(request)
 		if !s.limits.allow("anonymous:"+remote, 60) {
 			return request, store.ErrInvalid
 		}
@@ -128,6 +135,10 @@ func (s *Server) ServeHTTP(response http.ResponseWriter, request *http.Request) 
 		return
 	}
 	path := request.URL.Path
+	if _, err := s.clientAddress(request); err != nil {
+		http.Error(response, "invalid proxy client address", 400)
+		return
+	}
 	if path == "/authorize/callback" && request.Method != http.MethodGet {
 		http.Error(response, "method not allowed", 405)
 		return
@@ -206,6 +217,11 @@ func (s *Server) ServeHTTP(response http.ResponseWriter, request *http.Request) 
 		}
 	}
 	if path == "/authorize" {
+		remote, _ := s.clientAddress(request)
+		if !s.limits.allow("authorize:"+remote, 60) {
+			http.Error(response, "try again later", 429)
+			return
+		}
 		if request.ParseForm() != nil {
 			op.RequestError(response, request, protocol.ErrInvalidRequest(), nil)
 			return
@@ -256,6 +272,32 @@ func (s *Server) ServeHTTP(response http.ResponseWriter, request *http.Request) 
 		return
 	}
 	s.provider.ServeHTTP(response, request)
+}
+
+// clientAddress trusts exactly one configured proxy and one sanitized X-Real-IP.
+// Forwarded chains and headers from every other peer are deliberately ignored.
+func (s *Server) clientAddress(request *http.Request) (string, error) {
+	host, _, err := net.SplitHostPort(request.RemoteAddr)
+	if err != nil {
+		return "", err
+	}
+	peer, err := netip.ParseAddr(host)
+	if err != nil {
+		return "", err
+	}
+	trusted, err := netip.ParseAddr(s.config.TrustedProxy)
+	if err != nil || peer.Unmap() != trusted.Unmap() {
+		return peer.Unmap().String(), nil
+	}
+	values := request.Header.Values("X-Real-IP")
+	if len(values) != 1 {
+		return "", errors.New("sanitized proxy client address required")
+	}
+	client, err := netip.ParseAddr(values[0])
+	if err != nil || client.Zone() != "" {
+		return "", errors.New("invalid proxy client address")
+	}
+	return client.Unmap().String(), nil
 }
 
 func duplicateParameters(values url.Values) bool {

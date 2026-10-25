@@ -297,3 +297,12 @@ startup rejects unsafe database/WAL/SHM/journal files and reparse/link targets. 
 new files receive private permissions. A missing database beside existing keys
 requires restoration instead of creating a new owner. Ten Windows tests/subtests
 pass; the Unix identity test binary cross-compiles, but has not run on Linux.
+
+U3 availability correction (A3 scope): `fix(auth): bound anonymous state and trust proxy addresses`
+covers the production address/throttle configuration, SQLite quotas/expiry indexes,
+CLI flag and regression tests. An optional single trusted proxy IP must overwrite
+X-Real-IP with exactly one parsed client address; other peers cannot spoof it.
+Atomic limits cap anonymous sessions at 4096, login transactions at 2048 globally
+and 16 per browser; creation prunes at most 64 expired rows of each kind.
+Forty-four scoped tests pass, including two-connection contention and independent
+client allowances behind one proxy. Real proxy/network configuration was not changed.

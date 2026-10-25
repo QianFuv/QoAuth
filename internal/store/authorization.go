@@ -17,7 +17,20 @@ type LoginRequest struct {
 }
 
 func (storage *Store) CreateLogin(ctx context.Context, request LoginRequest) error {
-	_, err := storage.db.ExecContext(ctx, `INSERT INTO login_requests(id,client_id,browser_digest,payload,expires) SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM browser_sessions WHERE digest=? AND revoked=0 AND expires>?)`, request.ID, request.ClientID, request.Browser, request.Payload, request.Expires, request.Browser, time.Now().Unix())
+	return storage.transaction(ctx, func(tx *sql.Tx) error {
+		if err := pruneAnonymous(ctx, tx); err != nil {
+			return err
+		}
+		result, err := tx.ExecContext(ctx, `INSERT INTO login_requests(id,client_id,browser_digest,payload,expires) SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM browser_sessions WHERE digest=? AND revoked=0 AND expires>?) AND (SELECT count(*) FROM login_requests WHERE browser_digest=?)<16 AND (SELECT count(*) FROM login_requests)<2048`, request.ID, request.ClientID, request.Browser, request.Payload, request.Expires, request.Browser, time.Now().Unix(), request.Browser)
+		return one(result, err)
+	})
+}
+
+func pruneAnonymous(ctx context.Context, tx *sql.Tx) error {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM login_requests WHERE id IN (SELECT id FROM login_requests WHERE expires<=? LIMIT 64)`, time.Now().Unix()); err != nil {
+		return err
+	}
+	_, err := tx.ExecContext(ctx, `DELETE FROM browser_sessions WHERE digest IN (SELECT digest FROM browser_sessions WHERE user_id IS NULL AND (revoked=1 OR expires<=?) LIMIT 64)`, time.Now().Unix())
 	return err
 }
 func (storage *Store) Login(ctx context.Context, id string) (LoginRequest, error) {

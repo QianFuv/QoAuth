@@ -44,6 +44,7 @@ func run(arguments []string, input io.Reader, output io.Writer) error {
 	issuer := flags.String("issuer", "", "Canonical public HTTPS origin")
 	listen := flags.String("listen", "127.0.0.1:8080", "HTTP listen address behind a trusted TLS proxy")
 	development := flags.Bool("development-http", false, "Permit explicitly local HTTP development only")
+	trustedProxy := flags.String("trusted-proxy", "", "One proxy IP that overwrites X-Real-IP with the client IP")
 	confirm := flags.Bool("confirm", false, "Confirm host owner recovery and invalidate existing access")
 	if err := flags.Parse(arguments); err != nil {
 		return err
@@ -142,7 +143,7 @@ func run(arguments []string, input io.Reader, output io.Writer) error {
 		fmt.Fprintln(output, "Owner recovered with restricted access. Confirm a new TOTP before administration.")
 		return nil
 	}
-	config := auth.Config{Issuer: *issuer, DevelopmentHTTP: *development}
+	config := auth.Config{Issuer: *issuer, DevelopmentHTTP: *development, TrustedProxy: *trustedProxy}
 	if err = config.Validate(); err != nil {
 		return err
 	}
