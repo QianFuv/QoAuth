@@ -1,11 +1,83 @@
 package identity
 
 import (
+	"bytes"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
 )
+
+type interruptedCandidate struct{ wrote bool }
+
+func (reader *interruptedCandidate) Read(buffer []byte) (int, error) {
+	if reader.wrote {
+		os.Exit(80)
+	}
+	reader.wrote = true
+	return copy(buffer, []byte(`{"Version":2,`)), nil
+}
+
+func TestCandidateProcessHelper(t *testing.T) {
+	directory := os.Getenv("QOAUTH_CANDIDATE_DIRECTORY")
+	if directory == "" {
+		t.Skip("subprocess helper")
+	}
+	if os.Getenv("QOAUTH_CANDIDATE_PHASE") == "writing" {
+		_ = writeCandidate(directory, &interruptedCandidate{})
+		os.Exit(2)
+	}
+	current, err := LoadKeys(directory)
+	if err != nil {
+		os.Exit(3)
+	}
+	if _, err = StageRotation(directory, current, time.Now()); err != nil {
+		os.Exit(4)
+	}
+	os.Exit(80)
+}
+
+func TestInterruptedCandidateCreationKeepsCurrentInstallationRecoverable(t *testing.T) {
+	for _, phase := range []string{"writing", "published"} {
+		t.Run(phase, func(t *testing.T) {
+			directory := t.TempDir()
+			current, err := CreateKeys(directory)
+			if err != nil {
+				t.Fatal(err)
+			}
+			before, _ := os.ReadFile(filepath.Join(directory, "keys.json"))
+			command := exec.Command(os.Args[0], "-test.run=^TestCandidateProcessHelper$")
+			command.Env = append(os.Environ(), "QOAUTH_CANDIDATE_DIRECTORY="+directory, "QOAUTH_CANDIDATE_PHASE="+phase)
+			if err = command.Run(); err == nil || command.ProcessState.ExitCode() != 80 {
+				t.Fatal("child did not terminate at requested publication boundary", err)
+			}
+			if phase == "writing" && HasPendingRotation(directory) {
+				t.Fatal("partial write published an unusable rotation candidate")
+			}
+			published, _ := os.ReadFile(filepath.Join(directory, "keys.next.json"))
+			next, err := StageRotation(directory, current, time.Now())
+			if err != nil {
+				t.Fatal("interrupted staging stranded intact installation", err)
+			}
+			again, err := StageRotation(directory, current, time.Now().Add(time.Minute))
+			if err != nil || next.ID != again.ID || next.Previous.Until != again.Previous.Until {
+				t.Fatal("completed candidate changed on retry", err)
+			}
+			resumed, _ := os.ReadFile(filepath.Join(directory, "keys.next.json"))
+			if phase == "published" && !bytes.Equal(published, resumed) {
+				t.Fatal("published candidate bytes changed after process exit")
+			}
+			if _, err = os.Stat(filepath.Join(directory, "keys.staging.json")); !os.IsNotExist(err) {
+				t.Fatal("unpublished staging bytes were not reclaimed")
+			}
+			after, _ := os.ReadFile(filepath.Join(directory, "keys.json"))
+			if !bytes.Equal(before, after) {
+				t.Fatal("staging modified current operational keys")
+			}
+		})
+	}
+}
 
 func TestSigningRotationRetainsOnlyPublicOverlap(t *testing.T) {
 	directory := t.TempDir()

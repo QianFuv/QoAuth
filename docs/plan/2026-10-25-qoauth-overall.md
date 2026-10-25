@@ -591,3 +591,12 @@ fix. Admission now compares the observed generation inside its insertion transac
 replacement still deletes existing requests and invalidates codes/grants. A fresh
 request using the new generation succeeds. No policy framework or infrastructure
 is introduced; this is a local concurrency fence for existing client replacement.
+
+N3 correction under A4: `fix(keys): publish only complete rotation candidates`
+covers key serialization/staging, the CLI pre-staging binding check and subprocess
+interruption tests. A forced child-process exit during the direct candidate write
+first reproduced an unusable published candidate. The corrected path writes a
+private synced keys.staging.json, then atomically publishes keys.next.json before
+any DB update. Only explicit rotation retry reclaims a validated private unpublished
+staging file. A completed candidate retains the same key/deadline; malformed published
+candidates still fail closed. This does not claim physical power-loss validation.

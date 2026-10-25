@@ -1,6 +1,7 @@
 package identity
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -88,47 +89,45 @@ func WriteKeys(directory string, keys *Keys) error {
 }
 
 func writeKeys(path string, keys *Keys) error {
-	encoded, err := x509.MarshalPKCS8PrivateKey(keys.Signing)
+	content, err := encodeKeys(keys)
 	if err != nil {
 		return err
+	}
+	return WritePrivate(path, bytes.NewReader(content))
+}
+
+func encodeKeys(keys *Keys) ([]byte, error) {
+	encoded, err := x509.MarshalPKCS8PrivateKey(keys.Signing)
+	if err != nil {
+		return nil, err
 	}
 	stored := diskKeys{Version: 2, Signing: encoded, Encryption: keys.Encryption[:], Replaces: keys.Replaces}
 	if keys.Previous != nil {
 		stored.Previous, err = x509.MarshalPKIXPublicKey(keys.Previous.Public)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		stored.Until = keys.Previous.Until
 	}
-	content, err := json.Marshal(stored)
-	if err != nil {
-		return err
-	}
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
-	if err != nil {
-		return errors.New("key file already exists or cannot be created")
-	}
-	succeeded := false
-	defer func() {
-		file.Close()
-		if !succeeded {
-			_ = os.Remove(path)
+	return json.Marshal(stored)
+}
+
+func writeCandidate(directory string, input io.Reader) error {
+	temporary := filepath.Join(directory, "keys.staging.json")
+	if _, err := os.Lstat(temporary); !os.IsNotExist(err) {
+		file, err := OpenPrivate(temporary)
+		if err != nil {
+			return errors.New("unsafe interrupted key staging file; preserve it for inspection")
 		}
-	}()
-	if err = restrictFile(path); err != nil {
+		file.Close()
+		if err = RemoveMarker(temporary); err != nil {
+			return err
+		}
+	}
+	if err := WritePrivate(temporary, input); err != nil {
 		return err
 	}
-	if _, err = file.Write(content); err != nil {
-		return errors.New("cannot persist keys")
-	}
-	if err = file.Sync(); err != nil {
-		return errors.New("cannot sync keys")
-	}
-	if err = syncDirectory(filepath.Dir(path)); err != nil {
-		return errors.New("cannot sync key directory")
-	}
-	succeeded = true
-	return nil
+	return replaceFile(temporary, filepath.Join(directory, "keys.next.json"))
 }
 
 // LoadKeys fails closed on missing, malformed, unsafe or changed key files.
@@ -182,7 +181,8 @@ func HasPendingRotation(directory string) bool {
 	return !os.IsNotExist(err)
 }
 
-// StageRotation creates one resumable candidate while the installation lock is held.
+// StageRotation publishes only a complete synced candidate under the installation lock.
+// Unpublished staging bytes have no database effect and are reclaimed on explicit retry.
 func StageRotation(directory string, current *Keys, now time.Time) (*Keys, error) {
 	path := filepath.Join(directory, "keys.next.json")
 	if HasPendingRotation(directory) {
@@ -201,7 +201,11 @@ func StageRotation(directory string, current *Keys, now time.Time) (*Keys, error
 	}
 	next.Replaces = current.Binding()
 	next.Previous = &VerificationKey{Public: &current.Signing.PublicKey, ID: current.ID, Until: now.Add(VerificationWindow).Unix()}
-	if err = writeKeys(path, next); err != nil {
+	content, err := encodeKeys(next)
+	if err != nil {
+		return nil, err
+	}
+	if err = writeCandidate(directory, bytes.NewReader(content)); err != nil {
 		return nil, err
 	}
 	return next, nil

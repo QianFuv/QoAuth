@@ -232,6 +232,11 @@ func run(arguments []string, input io.Reader, output io.Writer) error {
 }
 
 func rotateSigning(ctx context.Context, database *store.Store, keys *identity.Keys, directory string, output io.Writer) error {
+	if !identity.HasPendingRotation(directory) {
+		if err := database.CheckInstallation(ctx, keys.Binding()); err != nil {
+			return err
+		}
+	}
 	next, err := identity.StageRotation(directory, keys, time.Now())
 	if err != nil {
 		return err
