@@ -1,0 +1,5 @@
+:root { font-family: system-ui, sans-serif; color: #172b3a; background: #f5f7fa; }
+body { margin: 0; }
+main { max-width: 48rem; margin: 4rem auto; padding: 2rem; }
+section { padding: 1.5rem; border: 1px solid #dde4eb; border-radius: 0.75rem; background: white; }
+button:focus-visible { outline: 3px solid #2463eb; outline-offset: 3px; }

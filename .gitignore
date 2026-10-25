@@ -1,0 +1,7 @@
+/.cache/
+/dist/
+/web/node_modules/
+/internal/webassets/dist/
+*.db
+*.db-shm
+*.db-wal
