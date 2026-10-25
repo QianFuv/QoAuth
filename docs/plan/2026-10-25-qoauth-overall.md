@@ -935,8 +935,8 @@ need not be started. No sudo, installation or host configuration change occurred
 | Task | Bounded scope / checks | Intended commit | State |
 |---|---|---|---|
 | P0 | Record A6, actual resource/runtime inspection and this checklist | docs(plan): record authorized platform validation | Committed 9094fa6 |
-| P1 | Execute Linux-native tests and final binary smoke on private ext4 temporary state; only necessary portability-test corrections | test(platform): validate isolated Linux execution | Done; this record's commit |
-| P2 | Build existing image with CPU/memory limits; non-root/read-only/loopback TLS synthetic lifecycle, restart and maintenance; necessary recipe fixes only | test(container): verify isolated image lifecycle | Pending |
+| P1 | Execute Linux-native tests and final binary smoke on private ext4 temporary state; only necessary portability-test corrections | test(platform): validate isolated Linux execution | Committed 2fcac4b |
+| P2 | Build existing image with CPU/memory limits; non-root/read-only/loopback TLS synthetic lifecycle, restart and maintenance; necessary recipe fixes only | test(container): verify isolated image lifecycle | Done; this record's commit |
 | P3 | Actual image provenance/notices/SBOM and updated finite evidence; retain all unexecuted limits | docs(validation): record Linux and container evidence | Pending |
 
 No additional product feature is authorized. Existing Windows race/browser/security
@@ -958,3 +958,29 @@ All temporary state/processes were removed. This is native Linux execution on WS
 not Linux race detection, physical power-loss or a real foreign-owned-inode test.
 The earlier Windows race evidence remains separate. Host CPU afterward was 2%
 and free RAM about 9.4 GiB; no research task was stopped or reconfigured.
+
+P2 built the existing Dockerfile natively with Docker 29.9.2 in Ubuntu using
+--resource memory=1536m --resource cpu-period=100000 --resource cpu-quota=100000.
+Build metadata confirms these limits. No Dockerfile or product source correction
+was required. scripts/verify-container.py uses one immutable local image, unique
+labeled containers/volume, uid/gid 65532, read-only rootfs, dropped capabilities,
+no-new-privileges, 1 CPU/512 MiB runtime limits, and offline maintenance containers.
+Only serve publishes a random 127.0.0.1 backend port; a temporary local HTTPS proxy
+uses a synthetic certificate trusted only by the test clients. The actual proxy
+peer 172.17.0.1 was confirmed by missing-X-Real-IP rejection, not simply assumed.
+
+The final harness run passed volume ownership, one-time init, secure cookie/Host,
+owner MFA, the real coreos Go RP code/PKCE/JWT/UserInfo flow, restart/JWKS/session
+persistence, confirmed logout, SIGTERM, lock exclusion, backup, signing rotation/AES
+continuity, restricted restore/recovery/quarantine and cleanup. Evidence:
+.cache/platform-a6/container-results-r3/report.json. Its first two runs exposed
+harness assumptions (relative redirect URL and transient RP startup 503), corrected
+before the passing rerun; no product failure was concealed. All synthetic volume,
+proxy, RP and test-container resources were removed. Full quarantine expiry remains
+the earlier real ten-minute drill; this run verifies startup denial, not clock bypass.
+
+The initial validation image's explicit revision label was stale (6d9f87f), while
+BuildKit correctly recorded source context 2fcac4b. It is not the final handoff image.
+A clean post-harness build with the exact current revision label and retained
+BuildKit provenance will replace it before export, with final-image checks recorded
+below. Base image digests and actual CA/binary evidence are being collected locally.
