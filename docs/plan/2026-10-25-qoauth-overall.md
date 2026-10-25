@@ -58,8 +58,8 @@ run normal hooks, and reconcile resulting HEAD for every logical commit.
 | Task | Bounded files/result | Required checks | Intended commit | State |
 |---|---|---|---|---|
 | T1 | Existing docs: A2, proxy/container design, six review fixes | V1 | docs(plan): accept parent review and authorize local M1 | Done: 5de6f7c |
-| T2 | go.mod/go.sum, web, asset handler, cmd, ignore/build/container files | V2; V6 consolidated in T5 | feat(scaffold): embed the lightweight application shell | Done; commit follows |
-| T3 | internal/store and SQL migrations | V3 atomic SQLite transitions | feat(store): enforce atomic sqlite credential transitions | Pending |
+| T2 | go.mod/go.sum, web, asset handler, cmd, ignore/build/container files | V2; V6 consolidated in T5 | feat(scaffold): embed the lightweight application shell | Done: 5f74b31 |
+| T3 | internal/store and SQL migrations | V3 atomic SQLite transitions | feat(store): enforce atomic sqlite credential transitions | Done; commit follows |
 | T4 | Test-only fixture OP adapter and independent Go RP integration | V3, V4 actual standard endpoints | feat(oidc): validate the standard fixture flow with sqlite | Pending |
 | T5 | Evidence and bounded support corrections | V1-V6 applicable checks | docs(validation): record M1 evidence and remaining gates | Pending |
 
@@ -113,3 +113,9 @@ protocol. The explicit A2 simplification overrides redundant template machinery.
 - T2: Locked frontend build and current embedded route tests passed; npm audit reported
   zero findings. Go test passed (two packages). V6 cross-build/config evidence is
   consolidated in T5 so a cold build does not block independent storage work.
+
+- T3: Six storage tests and scoped vet passed, including two independent SQLite
+  connections, 20 concurrent consumes, insertion failure rollback, recovery atomicity
+  and subprocess exit before commit. T4 must still test these through actual OP calls.
+- V6: Both amd64 shell binaries built and Compose config validated. No Docker engine
+  or native Linux execution was performed.
