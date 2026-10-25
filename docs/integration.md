@@ -120,8 +120,14 @@ Use an existing OIDC client library in each application. The primary path is a
 server-side app/BFF. A pure SPA cannot keep a client secret; its CORS/browser-token
 profile needs separate integration validation. Native/device flows, external IdPs,
 machine clients and back-channel logout are optional later work, not promised here.
-The second independent RP implementation, local OIDF profiles, key rotation and
-native Linux/image runs remain documented release gates.
+The second independent RP implementation, local OIDF profiles and native Linux/image
+runs remain documented release gates. M2.2 tests ordinary signing rotation with the
+standard RP: new kid triggers key retrieval; old public keys retire by persisted
+deadline; opaque access/refresh remain usable because AES is unchanged. A restore
+uses fresh signing trust and invalidates all token DB state. Cached old keys may
+still validate an unexpired ID Token, so the stopped-issuer/quarantine and app-session
+requirements in the [runbook](architecture.md#maintenance-and-recovery-runbook) apply.
+No RP may use an ID Token as an API bearer credential.
 
 Primary protocol sources, verified 2026-10-25:
 [OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html),

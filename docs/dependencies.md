@@ -1,6 +1,6 @@
 # Dependency choices and license risks
 
-Verified: 2026-10-25. M2.1 has a tested Go module graph and npm lockfile. Dependencies
+Verified: 2026-10-25. M2.2 keeps the tested Go module graph and npm lockfile. Dependencies
 were downloaded into project-local caches/node_modules; no system toolchain was
 installed or upgraded. The shortlist retains alternatives as research, not installed
 requirements. Only the selected set below is part of the current implementation.
@@ -8,7 +8,7 @@ requirements. Only the selected set below is part of the current implementation.
 Current scope: personal/small-team single-instance service; SQLite is the primary
 storage. Enterprise connectors and infrastructure are not prerequisites.
 
-## Selected M2.1 set and evidence
+## Selected set and M2.2 evidence
 
 | Component | Exact selected version | License / scope |
 |---|---|---|
@@ -35,7 +35,7 @@ and [license](https://github.com/pquerna/otp/blob/v1.5.0/LICENSE), plus
 preserved in distribution records. x/crypto v0.58.0 requires Go 1.26.0; no toolchain
 upgrade was needed. OTP v1.5.0 includes the upstream complete-random-read correction.
 
-M2.1 scoped Go tests/vet/race and both amd64 builds passed. `npm ci --ignore-scripts`
+M2.2 scoped Go tests/vet/race and both amd64 builds passed. `npm ci --ignore-scripts`
 followed by the TypeScript/Vite build passed; the full npm audit reported zero
 findings. govulncheck v1.9.0 reported zero affected symbols/imported packages in
 source and final Windows/Linux binaries, with one non-imported module advisory:
@@ -45,7 +45,8 @@ Initial stripped binaries triggered a conservative module-level report. The
 [tagged scanner](https://github.com/golang/vuln/blob/v1.9.0/internal/vulncheck/binary.go)
 explains its no-symbol fallback. Build settings now retain symbols (`-w`, no `-s`);
 both actual final artifacts pass the symbol scan. Details and runtime limitations
-are in the [checklist](plan/2026-10-25-qoauth-overall.md). This is not a security verdict.
+are in the [checklist](plan/2026-10-25-qoauth-overall.md). M2.2 added no dependency
+and reran source/both-final-binary scans plus npm audit on 2026-10-25. This is not a security verdict.
 
 The selected OP version's actual source still defaults to a legacy AES-CFB
 fallback. M1 explicitly supplies `op.NewAES256GCMCrypto` without a legacy decrypter;
@@ -57,9 +58,10 @@ These are application integration obligations, not reasons to invent cryptograph
 
 Semi's deep Button import and React 19 adapter build under the intended CSP without
 the unused full-package animation dependency's eval warning. Final bundle: about
-274.37 kB JavaScript and 52.96 kB CSS before gzip (84.37/9.06 kB compressed).
+275.03 kB JavaScript and 52.96 kB CSS before gzip (84.56/9.06 kB compressed).
 Chrome exercised the real temporary login/consent/Go RP/logout and administrator
-paths. Full accessibility audit and native Linux/container runs remain outstanding.
+paths, including the M2.2 disabled-client replacement form. Full accessibility audit
+and native Linux/container runs remain outstanding.
 
 ## Protocol and storage shortlist
 

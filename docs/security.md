@@ -1,10 +1,10 @@
 # Focused threat model, tests and risks
 
-Review revision: 3, 2026-10-25. Single installation, local users and clients.
-A3 authorized M2.1; 79 scoped race tests/subtests, real temporary browser flows and Windows
-process restart have executed. The [checklist](plan/2026-10-25-qoauth-overall.md#final-m21-evidence-2026-10-25)
+Review revision: 4, 2026-10-25. Single installation, local users and clients.
+A4 authorized M2.2; 127 scoped Windows race tests/subtests, temporary browser flows
+and final-binary maintenance/restart have executed. The [checklist](plan/2026-10-25-qoauth-overall.md#final-m22-evidence-2026-10-25)
 records exact evidence. The full matrix below remains a release contract, not a
-claim that every fuzz/conformance/backup/platform gate has passed.
+claim that every fuzz/conformance/platform gate has passed.
 
 ## Assets and boundaries
 
@@ -132,8 +132,49 @@ client/PKCE checks rather than browser cookies. Tokens and full request bodies a
 not logged; protocol logs redact arbitrary attributes and messages.
 
 Remaining real-use gates: second independent RP implementation and selected local
-OIDF conformance profiles; native Linux/image execution; backup/restore rollback and
-key-rotation lifecycle; authenticated state/activity retention, disk-full/pressure and
-password-cost measurements; comprehensive accessibility and distribution notices/SBOM.
+OIDF conformance profiles; native Linux/image execution; cross-version restore/upgrade,
+reference load/password-cost measurements, comprehensive accessibility and distribution
+notices/SBOM. M2.2 covers same-version backup/restore, rotation, retention and synthetic
+disk-full/transaction failures on Windows.
 Private key material is held in a protected local file, not hardware-backed storage;
 host administrators remain trusted. No blanket production-ready claim is warranted.
+
+## M2.2 maintenance review closure
+
+Independent code review found two P1 issues and one P2 interruption problem: SQL
+LIKE hid reserved-prefix-lookalike triggers from exact schema inspection; in-flight
+requests could carry client settings removed during replacement; partially written
+rotation candidates blocked an intact installation. All three were reproduced in
+isolated tests and corrected. A follow-up static review at d77ac9b found no remaining
+P0/P1/P2 in those corrections and immediate lifecycle callers. A separate cleanup
+review found no P0/P1/P2 and recommended additional post-revocation/CLI coverage,
+which is now included. Reviews did not independently run tests or certify the system.
+
+Snapshot integrity includes exact real schema and ledger, FK/integrity checks,
+private fixed members, RSA/AES binding and owner invariants. Restore creates a new
+directory behind an incomplete marker, discards authentication/recovery state,
+disables accounts/clients, replaces signing trust and persists maintenance/quarantine.
+Owner and ordinary-account recovery replace credentials/factors; clients require
+reviewed re-registration and new confidential credentials. No unseen post-snapshot
+account/permission change is presumed known. See the [runbook](architecture.md#maintenance-and-recovery-runbook).
+
+The plaintext key file and complete snapshots must remain private. SHA manifests
+are not authenticity against a backup custodian who can replace every member.
+Private-file checks reject unsafe owners/permissions, links/reparse traversal and
+hard-link aliases; trusted host-controlled parents remain required. They do not
+isolate the process from a privileged host attacker or prove race-free hostile-host
+filesystem access. Only task-owned temporary files were restricted during tests.
+
+Old signed ID Tokens are not remotely revoked by deleting JWKS. Tests demonstrate
+warm-RP cached-key acceptance before expiry, cold-RP rejection after restore and
+expiry rejection afterward. Restore therefore requires old issuance stopped and
+kept stopped, fresh signing trust, and ten minutes of quarantine (five-minute token
+life plus supported skew up to five minutes). Independent RP cookies require their
+own reconciliation. Ordinary rotation retains only the preceding public key until
+its persisted deadline; AES is unchanged. Process-exit tests are not power-cut tests.
+
+Cleanup preserves logical session/request parents and replay lineage through all
+family/token deadlines, in bounded child-first transactions. Still-valid replay
+revokes the family even across cleanup/restart; expired ancestors are rejected
+without revoking a live successor. Neither retained rows nor passing tests imply
+family-lifetime detection of every expired stolen credential.

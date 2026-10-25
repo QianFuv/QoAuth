@@ -6,8 +6,10 @@ One Go process contains a React/TypeScript/Vite/Semi UI and uses one local SQLit
 database and one issuer. No external database, Redis, Node runtime or enterprise
 tenant/SCIM/LDAP/SAML infrastructure is required.
 
-**Status, 2026-10-25:** M2.1 implements local accounts, password/TOTP/recovery,
+**Status, 2026-10-25:** M2.1 provides local accounts, password/TOTP/recovery,
 sessions, applications, consent, management UI/API and standard OIDC code+S256.
+M2.2 adds installation locking, consistent backup, isolated restore/reconciliation,
+signing rotation and bounded cleanup.
 The real service is `cmd/qoauth`; `internal/fixture` is test-only and is not imported
 by it. All validation used temporary synthetic state. This is not a production
 readiness or OpenID certification claim.
@@ -33,9 +35,10 @@ go vet ./cmd/... ./internal/... ./examples/...
 
 With an existing C compiler, run the same package set with `CGO_ENABLED=1` and
 `go test -timeout 180s -race`. Explicit paths avoid traversing `web/node_modules`.
-The measured run passed 79 tests/subtests across seven packages; three opt-in
-helper/browser entrypoints were skipped in the ordinary suite. The browser harness
-was separately executed. See [exact evidence and limits](docs/plan/2026-10-25-qoauth-overall.md#final-m21-evidence-2026-10-25).
+The final M2.2 Windows race run passed 127 tests/subtests across eight packages;
+five opt-in helper/browser entrypoints were skipped in the ordinary suite. Parent
+tests invoke the process helpers; the browser harness was separately executed. See
+[exact evidence and limits](docs/plan/2026-10-25-qoauth-overall.md#final-m22-evidence-2026-10-25).
 
 `scripts/build.ps1` builds two single-file executables under ignored `dist/`.
 No adjacent assets directory is required. Builds retain symbol tables for precise
@@ -69,12 +72,42 @@ may use `--development-http` with numeric loopback issuer/listener addresses onl
 TOTP seeds in SQLite are encrypted. It is sensitive plaintext key material, not a
 password-protected key vault. Startup checks owner/permissions and database sidecars;
 missing or mismatched keys fail closed. Do not expose the data directory or copy a
-live database alone. Automated backup/restore and key rotation remain the next slice.
+live database alone. All commands share an OS installation lock. Stop the instance
+before maintenance; no background backup scheduler or remote service is installed.
 
 Docker listens on `0.0.0.0:8080` inside the container; Compose publishes only
 `127.0.0.1:8080` on the host. The image contains no owner/keys; explicit initialization
 and persistent private storage are still required. Proxy/TLS/network changes and
 actual deployment need their own authorization.
+
+## Minimal maintenance
+
+```text
+qoauth backup --data-dir <stopped-installation> --snapshot <new-private-directory>
+qoauth rotate-signing --data-dir <stopped-installation> --confirm
+qoauth cleanup --data-dir <stopped-installation> --batch-size 128
+qoauth restore --snapshot <verified-snapshot> --data-dir <new-private-directory> --confirm
+qoauth recover-owner --data-dir <restored-directory> --confirm --restore-reviewed
+qoauth recover-user --data-dir <stopped-installation> --username <disabled-user> --confirm
+```
+
+Backup uses locked SQLite VACUUM INTO and publishes the DB/key manifest last.
+Restore never overwrites an existing destination. It checks the exact supported
+schema, integrity, hashes and key binding, discards old authentication state and
+signing trust, and disables users/clients. It requires local owner recovery, new MFA
+and a persisted ten-minute signed-token expiry quarantine. Keep the old issuer
+stopped throughout cutover; independent RP sessions need separate invalidation.
+Do not run `init` against a restored or incomplete directory.
+
+The snapshot includes plaintext operational keys: possession of the whole snapshot
+can compromise identity and encrypted TOTP data. SHA-256 detects changed bytes; it
+does not authenticate a maliciously replaced whole backup. Protect the full directory.
+See the [operating and recovery procedure](docs/architecture.md#maintenance-and-recovery-runbook)
+for client/account reconciliation, interrupted operations and version restrictions.
+
+[Remaining product work and release gates](docs/roadmap.md#remaining-bounded-work)
+are explicit. Linux/image runtime, independent interoperability/conformance, load,
+accessibility and distribution checks remain open; no production-ready claim.
 
 ## Review package
 

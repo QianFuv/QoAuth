@@ -1,17 +1,18 @@
 # Lightweight architecture and minimal operations
 
-Review revision: 3, 2026-10-25. Parent A3 authorized the M2.1 core.
+Review revision: 4, 2026-10-25. Parent A4 authorized M2.2 maintenance.
 The lightweight scope is unchanged. Implemented behavior is distinguished below
 from remaining operations/release targets; no production-readiness claim is made.
 
-M2.1 actual modules: `cmd/qoauth` owns explicit init/recover/serve commands;
+Actual modules: `cmd/qoauth` owns explicit service and local maintenance commands;
+`internal/maintenance` coordinates validated snapshots and isolated restoration;
 `internal/identity` handles bounded Argon2id, TOTP, encryption and private files;
 `internal/oidc` owns the production OP adapter and browser/admin API; `internal/store`
 owns SQLite transactions; `internal/webassets` embeds the Semi frontend in `web/src`.
 `examples/go-rp` is an independent coreos/x/oauth2 client. `internal/fixture` remains
 test-only. No config/session/service framework was needed.
 
-Schema migrations 001-004 are ordered and checksum-checked. Tables are
+Schema migrations 001-007 are ordered and checksum-checked. Tables are
 `schema_migrations`, `users`, `clients`, `assignments`, `auth_requests`, `grants`,
 `tokens`, `recovery_codes`, `activity`, `accounts`, `installation`, `browser_sessions`,
 `client_config`, `consents`, and `login_requests`. There are no tenant/organization
@@ -20,7 +21,9 @@ same-second `max_age=0` reauthentication explicit. Unauthenticated transactions
 bind to a browser first, then atomically to a user/session/consent before code issuance.
 Automatic SSO completion rechecks existing consent in that same transaction and
 cannot recreate withdrawn consent. Protocol duplicates are rejected before decoding;
-the internal callback is GET-only and browser-bound.
+the internal callback is GET-only and browser-bound. Client replacement increments a
+local generation; login insertion checks the generation read with the validated
+configuration inside its transaction, fencing in-flight requests across replacement.
 
 ## Decisions
 
@@ -96,7 +99,9 @@ Password verifiers use salted Argon2id. TOTP seeds use standard AES-GCM with
 user-specific authenticated context. The implemented private `keys.json` contains
 RSA PKCS#8 and the AES root secret; RSA is not separately encrypted. This replaces
 the earlier nested-encryption sketch: a co-located wrapping key adds no host-owner
-isolation. Protect/back up this sensitive key file separately from the database.
+isolation. Back up the database and matching key file together under the installation lock;
+protect the complete snapshot as credential material. Whole-host or whole-backup
+compromise is outside file encryption/ACL protection.
 Windows validates DACLs and current user/SYSTEM/Administrators ownership; Unix checks
 owner/mode. Production startup also validates DB/WAL/SHM/journal file types and
 permissions. It never repairs unsafe existing permissions or regenerates lost keys.
@@ -106,7 +111,8 @@ restart. Actual Windows executable restart preserved JWKS; native Linux remains 
 Admission caps: 4096 anonymous sessions, 2048 login transactions globally, 16 per
 browser. Each creation prunes at most 64 expired records of each kind; cleanup
 commits even if admission is denied. Keep valid token/replay lineage out of this
-pruning path. Authenticated-session/token/activity retention remains a release gate.
+pruning path. Explicit maintenance cleanup handles authenticated-state retention
+without deleting expired browser-session parents of still-live refresh families.
 
 ## SSO, logout and revoke
 
@@ -172,41 +178,116 @@ without it use a reviewed owner-assisted recovery path and local recovery codes,
 not a fabricated successful email reset. No automatic firewall changes, service
 installation, public binding, default credentials or real SMTP account creation.
 
-## Remaining minimal backup, upgrade and key runbook (not yet implemented)
+## Maintenance and recovery runbook
 
-1. Use SQLite backup API or validated VACUUM INTO snapshot, or a documented
-   stopped-service backup; do not copy only a live .db while ignoring WAL.
-   Back up issuer/configuration; protect and back up the sensitive key file
-   separately from database snapshots. [SQLite backup guidance](https://www.sqlite.org/backup.html).
-2. Restore into a separate location in maintenance mode. Check integrity, schema,
-   issuer and key availability before serving. Invalidate sessions, access/refresh
-   grants, outstanding login/reset/invitation tokens and saved recovery codes.
-3. Reconcile user/password/MFA and client credentials/callbacks/assignments/scopes/
-   signing-key state before reopening; snapshots cannot know later changes. Disable
-   uncertain clients/keys and force user recovery/re-enrollment when necessary.
-   Do not claim restoration preserves unseen post-backup revocations.
-4. Apply ordered checksum-verified schema migrations after a pre-upgrade snapshot.
-   On failure, stop safely; restore a compatible snapshot rather than blindly run
-   destructive down-migrations. State version compatibility in the upgrade guide.
-5. Planned signing rotation publishes the next public key, switches signing, then
-   retains old verification keys beyond relevant token lifetimes and cache/skew
-   allowance. Emergency compromise stops issuance, revokes affected grants and
-   communicates the need for clients to refresh trust. Test restart during rotation.
-6. Log redacted errors and security actions; keep a bounded local activity history
-   (proposed 30 days). Record security mutations in the same transaction as their
-   activity row. This is useful history, not tamper-proof evidence against the host
-   owner. Health checks distinguish process liveness from usable durable state.
+These are implemented commands, validated only against disposable synthetic data.
+Do not perform real installation/recovery, proxy, network or account changes without
+separate authorization. Use trusted local parent directories, not network filesystems.
 
-No HA, remote database, scheduled backup daemon or external monitoring service is
-created by this design. The user/operator can later choose scheduling and destinations.
+Every command acquires the permanent private `installation.lock` before keys/SQLite;
+serving releases it only after HTTP handlers finish and SQLite closes. Do not remove
+or replace the lock file to bypass contention. Stop all older binaries too: versions
+predating this lock cannot participate in its exclusion. Backup/rotation/cleanup are
+explicit stopped-instance operations, not extra services or scheduled jobs.
 
-M2.1 first-owner setup is explicit local `init`, with a durable database marker,
-private keys and redirected password input. No anonymous claim endpoint exists.
-A repeated init or missing database beside old keys fails closed. Interrupted owner
-enrollment resumes after password login with enrollment-only authority. Host-only
-`recover-owner --confirm` resets the owner to restricted MFA enrollment, revokes
-existing authentication and records activity. Only temporary synthetic installations
-were initialized during this task.
+### Backup and version boundary
+
+1. Stop the one issuer. Keep an operator-controlled record of its canonical issuer,
+   proxy/listen settings, application IDs/callbacks/scopes and intended assignments.
+   First serving persists the issuer; a never-served installation has no saved issuer.
+   Snapshot metadata does not save every CLI/proxy option or replace that record.
+2. Run `qoauth backup --data-dir <source> --snapshot <new-directory>`. Both directories
+   must be separate and non-nested, under trusted existing parents. The destination
+   must not exist, even as an empty directory. The source lock spans VACUUM INTO,
+   key copying, output inspection and manifest publication. Committed WAL data is
+   included. Never copy only a running .db. [SQLite VACUUM INTO](https://www.sqlite.org/lang_vacuum.html).
+3. A complete snapshot has exactly `qoauth.db`, `keys.json`, `manifest.json` and its
+   permanent `installation.lock`. An `operation.incomplete` marker blocks use;
+   incomplete outputs are preserved for inspection, never treated as success.
+4. Version 1 manifests currently accept only this binary's exact schema 001-007.
+   Validation opens existing bytes without migrations, checks the exact ledger and
+   actual tables/indexes/constraints, rejects unexpected triggers/views, runs full
+   integrity/FK checks and verifies one owner and matching RSA/AES binding. Hashes
+   detect changed bytes, not an attacker who replaces the whole backup and manifest.
+5. Treat all snapshot members as sensitive. The RSA/AES file is plaintext under
+   strict owner/ACL protection; encrypted DB TOTP is recoverable with that file.
+   Host administrators and backup custodians are trusted. No same-directory wrapping
+   key or external KMS is added. Copy to any external destination only with authority.
+
+For a future upgrade, stop and back up using the old compatible executable, retain
+that executable and verify its restore path before upgrading a separate test copy.
+This binary rejects older snapshot schemas rather than silently migrating inputs.
+Live migrations remain ordered/checksummed; no destructive down-migration exists.
+A cross-version upgrade/rollback drill remains a release gate.
+
+### Restore and reconcile
+
+1. Stop the old issuer and keep it stopped through cutover, including copies on other
+   hosts. Run `qoauth restore --snapshot <snapshot> --data-dir <new-directory> --confirm`.
+   A destination lock cannot stop another installation elsewhere. Never use `init`
+   to repair a restore or activate the snapshot directory itself.
+2. The new directory is marked incomplete before operational files appear. Restore
+   validates the source first, creates fresh RSA with no previous public key, retains
+   AES exactly, and transactionally clears browser/restricted sessions, login/code
+   records, grants/access/refresh tokens, recovery codes, consent and assignments.
+   It disables all accounts and clients, cancels pending factor setup and persists
+   maintenance mode plus a ten-minute quarantine. An interrupted destination stays
+   unusable; retry into another new directory, preserving the original evidence.
+3. Review rolled-back users/passwords/MFA, privileges, client secrets/callbacks/scopes/
+   audiences/assignments and key custody. Snapshot contents cannot reveal changes
+   made after backup. Run `recover-owner --data-dir <restored> --confirm --restore-reviewed`
+   with a fresh password via redirected stdin. This enables only the owner, retires
+   the old factor and requires new MFA enrollment. It does not shorten quarantine.
+4. Quarantine begins at restore, after the operator has stopped old issuance. ID Tokens
+   live five minutes; the supported RP clock-skew allowance is at most five minutes.
+   A warm RP may retain an old public key and accept an unexpired old ID Token even
+   after JWKS removal. After the window, compliant verifiers reject it by expiry.
+   This is not immediate remote JWT revocation. Clear independently maintained RP
+   sessions and trust when the incident/cutover requires it; RPs allowing greater
+   skew or ignoring expiry are outside this recovery guarantee.
+5. Once serving is allowed, the owner confirms a new TOTP before administration.
+   For each reviewed disabled ordinary account, stop the instance and use
+   `recover-user --data-dir <restored> --username <name> --confirm` with a new password.
+   It drops old administrator status, factor/codes and app access; the user must
+   enroll a new factor. Reassign only reviewed application access afterward.
+6. In Administration, choose **Replace a disabled application with reviewed settings**,
+   using its recorded ID and complete reviewed settings. Confidential clients get
+   a new secret once; old assignments/consent/grants remain invalid. Resource APIs
+   must have dependent RP clients disabled first; register reviewed resources before
+   dependent RPs. The resource/RP class cannot change. Current UI lists active clients
+   only, so recovery needs recorded IDs/configuration; a disabled-client listing is
+   a small remaining usability item, not an implemented discovery/reconciliation UI.
+
+### Signing rotation and bounded cleanup
+
+Run `rotate-signing --data-dir <stopped-installation> --confirm`. It writes/syncs a
+private unpublished `keys.staging.json`, atomically publishes `keys.next.json`, commits
+the matching DB binding, then replaces `keys.json`. An interrupted unpublished write
+leaves current keys usable; explicit retry validates and reclaims only that staging
+file. Published candidates block serving/other maintenance until the same command
+resumes them with the same key/deadline. Do not manually remove a published candidate
+or adopt mismatched keys. Invalid published material fails closed.
+
+Only the new RSA key signs. At most one previous **public** key remains for ten
+minutes from staging; every JWKS/verification-key lookup enforces its saved deadline.
+Another rotation during overlap is rejected. Restart cannot extend it. AES stays
+unchanged, so ordinary rotation preserves TOTP and existing opaque protocol tokens.
+Restore is different: it drops all previous signing trust and all token DB state.
+Physical power-loss durability and native Linux filesystem behavior remain untested.
+
+Run `cleanup --data-dir <stopped-installation> --batch-size 128` for one transaction.
+Allowed batches are 1-256 rows **per table**, output contains counts only. Delete
+eligible tokens before grants, requests and unreferenced sessions; retain a family
+until its grant and every recorded token expiry pass, even after revocation. A last
+seven-day refresh issued near the thirty-day grant deadline can retain evidence for
+roughly thirty-seven days, while usability still ends at the grant deadline. Activity
+has a separate thirty-day cutoff. No maintenance scheduler is installed.
+
+Retained replay evidence is not a promise to detect arbitrarily old credentials.
+Currently valid consumed code/refresh reuse revokes its family; expired ancestors
+are rejected before that check and do not revoke still-live successors. Failed COMMIT
+or disk-full cleanup leaves prior state intact. A failed or lost post-commit token
+response still requires reauthentication where the client cannot safely recover.
 
 ## Local packaging reference
 

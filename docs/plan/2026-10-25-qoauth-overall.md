@@ -3,8 +3,8 @@
 Protocol Version: 2026-09-05
 Protocol Revision: autonomous-execution-git-flow-v2
 
-Revision 6, 2026-10-25. Status: M2.1 accepted; M2.2 implementation authorized by A4
-and in progress. Parent A4 accepts protected plaintext key custody and the minimal
+Revision 7, 2026-10-25. Status: M2.1 accepted; M2.2 implemented and locally
+verified under A4, submitted for parent acceptance. Parent A4 accepts protected plaintext key custody and the minimal
 maintenance scope below. Linux native/image runs remain
 unverified. There is no outstanding end-user approval gate for this scope. This is the single
 execution checklist; do not create another plan for each small step.
@@ -183,7 +183,7 @@ password/TOTP/ownership/recovery, license bundle/SBOM, native Linux/container,
 backup/restore and key rotation remain future gates. No user approval wait is a
 technical blocker; the parent owns the next implementation decision.
 
-## Proposed next slice for parent decision: M2.1 local authentication core
+## Historical M2.1 proposal, accepted by A3
 
 Parent accepted this concrete proposal in A3 below.
 Keep the same process/database/UI stack and existing single checklist.
@@ -388,7 +388,7 @@ twice; Chrome completed the equivalent flow. Test servers and RP child processes
 were stopped, the Chrome task tab closed, and disposable browser state removed.
 
 The source scan and final binary scans retain the unimported-module warning rather
-than suppress it. See [dependency evidence](../dependencies.md#selected-m21-set-and-evidence)
+than suppress it. See [dependency evidence](../dependencies.md#selected-set-and-m22-evidence)
 for GO-2026-5932 and the stripped-binary scanner fallback. The module as a whole is
 not described as vulnerability-free. The final binaries have the following actual
 hashes; these supersede the historical M1 executable hashes, not its old evidence.
@@ -428,7 +428,7 @@ checks are implemented; nested encryption under a co-located key was not added.
 The host administrator is trusted. This implementation choice and outstanding
 release gates are explicitly presented for parent review; no production-ready claim.
 
-## Proposed next slice for parent decision: M2.2 minimal maintenance
+## Historical M2.2 proposal, accepted by A4
 
 Parent accepted this proposal in A4 below; no final-user internal-plan approval
 wait is introduced. Continue
@@ -497,7 +497,7 @@ Baseline is clean main `15e2f421c522113d4529e3872710fda512174d7c`.
 | N3 | Persistent signing rotation and OP verification window, restart/interruption tests | feat(keys): rotate signing keys with bounded overlap | Done; identifiable by exact message |
 | N4 | Consistent backup, new-directory restore, restricted recovery and signed-token quarantine | feat(maintenance): add isolated backup and restore | Done; identifiable by exact message |
 | N5 | Bounded dependency-aware state and activity cleanup, failure regressions | feat(storage): bound maintenance without losing replay evidence | Done; identifiable by exact message |
-| N6 | Actual checks, operational instructions and bounded remaining product/release list | docs(validation): record M2.2 maintenance evidence | Pending |
+| N6 | Actual checks, operational instructions and bounded remaining product/release list | docs(validation): record M2.2 maintenance evidence | Done; evidence commit identifiable by exact message |
 
 Verification reuses unchanged M2.1 UI evidence; no UI redesign is planned. Required
 new tests cover lock contention/process exit, unsafe files, backup integrity/version/
@@ -607,3 +607,71 @@ denial assertions. CLI coverage now includes cleanup in lock/incomplete guards,
 invalid batch limits, default 128-row progress and strictly count-only JSON. The
 independent cleanup review found no P0/P1/P2; these were coverage recommendations,
 not claimed runtime defects.
+
+
+## Final M2.2 evidence (2026-10-25)
+
+Implementation/tests baseline: `22d1b39ab274c69f7189e6260b454c62f676d4e3` on main.
+Final changes after that baseline are this documentation closure only. Go/npm graphs
+are unchanged from M2.1. All state/key/recovery operations used isolated synthetic
+installations; no real accounts, external bindings, services or deployment were used.
+
+| Check actually run | Result and limits |
+|---|---|
+| `go test -count=1 -timeout 180s -race -json ./cmd/... ./internal/... ./examples/...` | 127 tests/subtests passed across eight packages on Windows; `.cache/m22-reviewed-race.json`. Five opt-in helper/browser entrypoints skipped in the ordinary run; subprocess parents invoke helpers and browser was run separately |
+| Scoped `go vet` and gofmt inspection | Pass; existing Go 1.26.10, project caches; race uses existing MinGW compiler with CGO=1 |
+| SQLite settings and migrations | Runtime 3.54.1, WAL, synchronous=FULL (2), foreign_keys=1, busy_timeout=3000; migrations 001-007. Backup validation never silently migrates its source |
+| `npm run build` | TypeScript/Vite pass; final JS 275.03 kB, CSS 52.96 kB (gzip 84.56/9.06). This unchanged UI build was reused for final binaries |
+| `npm audit --json` | Zero info/low/moderate/high/critical findings at this check; `.cache/m22-npm-audit.json` |
+| `go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 -test ./cmd/... ./internal/... ./examples/...` | Zero affected symbols or imported packages; one advisory in a required but unused module package, GO-2026-5932 OpenPGP; not a claim that all x/crypto packages are safe |
+| Same scanner, `-mode=binary`, both final target files | Zero affected symbols/imported packages; same non-imported module advisory. Retained symbols avoid a misleading stripped-binary fallback |
+| `CGO_ENABLED=0 GOARCH=amd64 go build -trimpath -ldflags='-w'`, GOOS windows/linux, `./cmd/qoauth` | Both final executables built; Linux identity test binary also cross-compiles. These are not native Linux execution |
+| `docker compose config --quiet` | Pass. Docker image build/run and non-root volume behavior not executed; no daemon started |
+| Final Windows binary isolated smoke | Init, embedded login/discovery, restart with same JWKS, locked backup rejection, snapshot, signing rotation/new JWKS and unchanged AES, fresh restore, reviewed owner recovery/quarantine, count-only cleanup, secret-free stdout/stderr all pass; `.cache/m22-binary-smoke.txt` |
+| Browser via production adapter/embedded UI | Existing owner login+TOTP, fresh-MFA rejection/relogin, public client create/disable/re-register with narrower scopes, resulting application/activity visible. `.cache/m22-admin.png`; test harness stopped and temporary state removed |
+| Document UTF-8, local links/anchors, conflict markers, Git diff whitespace | Validated with `.git/validate-docs.py` and `git diff --check`; 11 Markdown files remain the complete review package |
+
+The native T3 preview failed twice at snapshot with `Preview automation snapshot
+timed out after 15000ms.` Chrome was used as the permitted fallback. Its console
+reported existing extension/userscript CSP and extension messaging failures, not a
+QoAuth application exception. The captured viewport shows the replacement activity
+sequence; full-page screenshot capture timed out, so no full-page image is claimed.
+The browser harness completed in 586 seconds and cleaned up; later Go-only review
+corrections did not change the UI bundle. Their actual OP/storage paths are covered
+by the final race suite. M2.1's broader standard Go RP/browser flow remains prior
+unchanged UI evidence, not newly rerun in this smaller browser slice.
+
+Final artifact identity (local, ignored, not published):
+
+| Artifact | Bytes | SHA-256 |
+|---|---:|---|
+| `dist/qoauth-windows-amd64.exe` | 17810432 | `6418e7e7516c912494165e52e42083abb438f469d8a095f20b646507a740ff1b` |
+| `dist/qoauth-linux-amd64` | 17725692 | `b5f4812e5f1fcde5032d8c174317c1c7896586b6e226ef9aa7de6b02ffea0465` |
+
+Review closure: independent cleanup review at 3a8366f found no P0/P1/P2 and suggested
+coverage additions now committed. Maintenance review at f9952e7 found the two P1s
+and P2 described above; before/after regressions reproduced all three. Independent
+correction review at d77ac9b found no remaining P0/P1/P2 in those corrections and
+immediate callers. Reviews were source-only; the implementation agent executed the
+checks. Neither these reviews nor process termination tests establish exhaustive
+security assurance or physical power-loss durability.
+
+M2.2 logical local commits after accepted 15e2f42:
+
+- `54f4757` records A4 and the one execution checklist.
+- `6e15f78` serializes installation operations with OS locks.
+- `d167dd8` implements bounded persistent signing rotation.
+- `f9952e7` implements validated backup/new-directory restore and reconciliation.
+- `3a8366f` implements dependency-aware bounded cleanup.
+- `c6922ef` rejects schema-prefix lookalike objects.
+- `842de0c` fences client replacement against in-flight old configuration.
+- `d77ac9b` atomically publishes only complete signing candidates.
+- `22d1b39` strengthens post-revocation cleanup and CLI coverage.
+- This documentation evidence commit is identifiable by `docs(validation): record M2.2 maintenance evidence`.
+
+No unreviewed enterprise/infrastructure expansion is scheduled. The remaining
+bounded product items and finite release gates are in [roadmap](../roadmap.md#remaining-bounded-work):
+password-reset UI, disabled-client recovery visibility, password/readiness assessment;
+then second RP/OIDF, native Linux/image runtime, load/accessibility, upgrade drill and
+license/SBOM packaging. These are proposals for the parent's next internal decision,
+not an end-user approval wait or evidence that M2.2 already passed those gates.

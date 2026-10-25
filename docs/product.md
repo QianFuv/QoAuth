@@ -1,9 +1,10 @@
 # Lightweight product scope
 
-Review revision: 3, 2026-10-25. The lightweight scope remains authoritative.
-A3 authorized M2.1 local core implementation; actual temporary-state evidence is in
-the checklist. Backup/rotation/conformance and native Linux/image verification remain
-release gates; the product target below is not a claim that every feature is done.
+Review revision: 4, 2026-10-25. The lightweight scope remains authoritative.
+A4 authorized M2.2 local maintenance. Core authentication plus backup/restore,
+rotation and bounded retention have isolated Windows evidence in the checklist.
+Remaining product usability and release verification are listed in the roadmap;
+conformance and native Linux/image execution remain open.
 
 ## Intended result
 
@@ -48,8 +49,8 @@ host using a verified backup. There is one trust domain and one configured issue
 | Permissions | Two administrative roles: administrator and regular user; per-app assignments/scopes, server-side enforcement; no universal policy language |
 | Sessions | Session list and revoke; logout current/all; user disable blocks new login/refresh/online access validation; RP-initiated logout |
 | MFA/recovery | TOTP and single-use recovery codes; administrators must enroll MFA; users may enroll or be required by policy; reset does not remove MFA |
-| UI/API | Small Users, Applications, Sessions, Activity and Settings screens, plus self-service password/MFA/session pages; minimal documented admin API used by UI |
-| Logs | Redacted structured operational logs and simple security activity records with actor/action/target/time/result; bounded retention |
+| UI/API | One simple administration page for users/apps/activity, self-service password/MFA/sessions, and local operational commands; the same server-authorized admin API |
+| Logs | Redacted structured operational logs and simple security activity records (event, subject, time); bounded retention, no external audit pipeline |
 | Delivery | Embedded assets, SQLite data directory, native OS smoke tests, non-root Docker image, explicit migration/backup/restore instructions |
 | Integration | One Go web RP example and generic OIDC/BFF instructions; happy-path and negative tests |
 
@@ -75,14 +76,14 @@ microservices, message queues, Kubernetes, HA and multi-region deployment.
 Enterprise competitors remain research references only. These are not later
 mandatory milestones disguised as a backlog.
 
-## Proposed defaults to verify
+## Implemented defaults and capacity to verify
 
-Authorization code: one use, 60 seconds. Access token: 5 minutes. Browser session:
-8-hour idle / 24-hour absolute lifetime. Refresh family: 7-day idle / 30-day
-absolute lifetime, bounded by grant and account status; ordinary interactive
-logout also revokes the associated family. Administrative sensitive changes
-require reauthentication within 5 minutes. These are policy proposals, not
-requirements imposed by the standards.
+Authorization code: one use, 60 seconds. Access and ID Tokens: five minutes.
+Authenticated browser session: twelve-hour absolute lifetime; no sliding idle
+extension. Each refresh token lasts seven days, with a thirty-day absolute grant
+limit and current account/assignment checks. Ordinary interactive logout revokes
+the associated family. Sensitive administrative changes require authentication
+within five minutes. These are product policies, not standards-mandated defaults.
 
 Use a modest reference fixture of 100 users and 10 applications. Measure 10
 non-password protocol requests/second for 10 minutes on a recorded 2-vCPU/2-GiB
@@ -90,5 +91,6 @@ machine, with no server errors or unbounded memory growth; record p95 rather tha
 invent a capacity guarantee. Benchmark password hashing independently with a
 bounded concurrency budget. A larger supported scale requires actual evidence.
 
-Current next action: execute the parent-approved M1 checklist. Real credentials,
-external bindings, deployment and M2 production account behavior remain excluded.
+Current handoff: M2.2 implementation and isolated verification are complete for
+parent review. Remaining product and release items are bounded in the roadmap.
+Real credentials, external bindings and deployment remain outside this task.

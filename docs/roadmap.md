@@ -1,7 +1,7 @@
 # Short roadmap and acceptance conditions
 
-Review revision: 3, 2026-10-25. The lightweight scope still supersedes the earlier
-team/B2B/enterprise roadmap. Parent A3 authorized M2.1 locally. Estimates are rough
+Review revision: 4, 2026-10-25. The lightweight scope still supersedes the earlier
+team/B2B/enterprise roadmap. Parent A4 authorized M2.2 locally. Estimates are rough
 effort for one experienced engineer, not delivery promises.
 
 | Milestone | Effort estimate | Result |
@@ -11,17 +11,17 @@ effort for one experienced engineer, not delivery promises.
 | M2 Working core | 3-5 engineer-weeks | Local users, apps/scopes, code+PKCE, SSO/sessions/revoke, TOTP/recovery, simple admin UI/logs |
 | M3 Validate and package | 2-3 engineer-weeks | Protocol/security regression evidence, Go integration example, native binaries/image smoke, backup/restore and rotation guide |
 
-M0/M1 were accepted; M2.1 core implementation and available local verification are
-complete for parent review. The current executable is a real authentication service,
-distinct from test-only fixture code. Seventy-nine race tests/subtests, standard RP
-HTTP/browser flows, native Windows restart, source/final-binary scans, target builds
-and Compose validation have evidence. Linux native/image execution remains open.
-See the [single checklist](plan/2026-10-25-qoauth-overall.md#final-m21-evidence-2026-10-25).
+M0/M1/M2.1 were accepted. M2.2 minimal maintenance is implemented and locally
+verified for parent review: consistent snapshots, isolated restricted restore,
+persisted signing rotation, installation locking and bounded cleanup. The current
+program remains one real Go authentication service with SQLite and embedded UI;
+fixture code remains test-only. Final M2.2 evidence is 127 passing Windows race
+tests/subtests across eight packages, final binary maintenance smoke, standard RP
+regressions, browser client replacement, target builds and dependency scans.
+[Exact commands and limitations](plan/2026-10-25-qoauth-overall.md#final-m22-evidence-2026-10-25).
 
-M2.1 covers one independent RP library in two app registrations; a second RP library
-and local conformance suite remain release checks. The next bounded proposal is
-M2.2 minimal maintenance/restore/rotation, described with files, tests and authority
-in the same checklist. No enterprise expansion or infrastructure dependency is implied.
+One independent RP library is tested, including multiple app registrations. A second
+implementation, local conformance profiles and native Linux/image runs remain open.
 All estimates above are planning ranges, not completion or production promises.
 
 ## M0 document acceptance
@@ -80,12 +80,45 @@ A real Linux runtime or container environment may be needed later. Cross-compili
 alone is not a native smoke test. If unavailable, record the exact missing check
 and environment; do not install system components or claim a pass.
 
+## Remaining bounded work
+
+Product functionality is close to the agreed small-system boundary. The next
+optional internal review slice should close only these concrete usability gaps:
+
+| Item | Small implementation boundary | Acceptance / likely files |
+|---|---|---|
+| Owner-assisted password reset UI | Expose the existing authorized reset operation for a selected non-owner; preserve MFA and revoke prior state | Fresh admin MFA/CSRF, reset-to-old-login race and browser checks; `web/src/admin.tsx`, `internal/oidc/api.go` and focused tests |
+| Disabled-client recovery visibility | Show disabled client IDs/configuration without secret verifiers and prefill the existing reviewed replacement form | No change to generation/assignment invalidation; fresh secret only on explicit replacement; `internal/store/identity.go`, `internal/oidc/api.go`, `web/src/admin.tsx` |
+| Password blocklist and small operational readiness contract | Assess the existing small local list and hashing budget; define a minimal non-sensitive readiness check rather than a monitoring system | Bounded password rejection/cost tests and failure-state checks; `internal/identity`, `internal/oidc`, existing docs |
+
+These are proposed follow-ups, not implemented by M2.2 or silently approved new
+features. They need no new infrastructure. Work/tests can remain in the repository
+with disposable credentials; actual accounts, deployment or host changes still need
+specific authority. Use this same execution checklist for the parent's next decision.
+
+Release gates remain finite and separate from product feature expansion:
+
+- Native Linux amd64 and actual non-root Docker image build/run/restart, including
+  file ownership, OS lock, embedded UI, restore/rotation and mount permissions. No
+  usable permitted runtime was exercised here; do not start/install host components
+  merely to satisfy the gate.
+- A second independent standard RP and selected local OIDF profiles; pin a separate
+  conformance harness and obtain any required runtime/setup authority. No public
+  callback, SaaS trial or certification claim.
+- Recorded small-team load/hash measurements and accessibility/keyboard review.
+  Synthetic SQLite COMMIT/full-disk/locking failures already pass; this does not
+  establish capacity or physical power-loss durability.
+- Cross-version upgrade/rollback drill with a compatible snapshot binary, final
+  NOTICE/license inventory, SBOM and reproducible artifact checksums. QoAuth's own
+  source license remains a maintainer decision before distribution. No publishing
+  or deployment is authorized by preparing these artifacts.
+
 ## Optional work and stop line
 
 Passkeys, social/upstream OIDC, back-channel logout, machine clients and device
 flow are demand-driven follow-ups. SCIM/LDAP/SAML, tenancy, approval flows and
 cluster infrastructure are outside the current roadmap, not postponed obligations.
 
-Use the existing overall-plan checklist for authorized M1 files, dependency/download
-boundary, tests and logical commits; no new per-stage plan ceremony. Keep main,
+Use the existing overall-plan checklist for authorization history, file scopes,
+verification and logical commits; no new per-stage plan ceremony. Keep main,
 one logical change per commit, no branch/worktree, push, release or deployment.

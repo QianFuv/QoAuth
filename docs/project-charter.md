@@ -1,8 +1,24 @@
-# Project charter and phase-one authority
+# Project charter and authorization history
 
 Recorded: 2026-10-25 (Asia/Singapore). Product name: QoAuth.
 
-## Current authorization A3
+## Current authorization A4
+
+The parent message beginning "已审阅 M2.1 交付及 M2.2 计划，批准这个最小运维闭环的代码实现与隔离合成测试"
+authorized minimal local maintenance and logical main commits from 15e2f42. It
+accepts protected plaintext keys.json, stopped locked consistent DB+key backup,
+new-directory restore/reconciliation and old-token invalidation, bounded signing
+rotation without AES changes, and dependency-aware cleanup. Implementation and
+correction evidence are in the single execution checklist. This records the actual
+parent decision, not a quote attributed to the original end user.
+
+All tests/commands use isolated temporary synthetic credentials and databases.
+No real installation, persistent real access, system permission/network change,
+deployment, push or release is authorized. M2.2 completion is submitted for parent
+acceptance; remaining small product/release work is listed explicitly rather than
+silently entering another feature stage.
+
+## Historical authorization A3
 
 The parent message beginning "我已审阅 M1 最终证据和 M2.1 三部分计划，批准在原授权范围内实施 M2.1"
 authorized the bounded core, verification and logical main commits from 0a77f7b.
@@ -58,7 +74,7 @@ to a future QoAuth policy service. These boundaries must be reflected in the des
 - Windows amd64 and Linux amd64 executables; Linux amd64 Docker image.
 - Work directly on `main`; one logical change per commit. No development branch
   or worktree, remote push, release, or deployment.
-- Original M0 stop: documentation/research only; subsequently superseded by A2/A3 within their bounded implementation scopes.
+- Original M0 stop: documentation/research only; subsequently superseded by A2/A3/A4 within their bounded implementation scopes.
 - Compare Keycloak, authentik, ZITADEL, Ory, Casdoor, Authelia, Auth0, Okta,
   Microsoft Entra, and Clerk; select representative systems for deeper analysis.
 - Cover product scenarios, feature tiers, architecture, storage, deployment,
@@ -108,7 +124,7 @@ Git 2.56.0.windows.3 and Python 3.12.15 were already available. Existing default
 Git identity was present; it was not changed. No dependency installation is needed
 for this documentation stage.
 
-## Evidence and acceptance
+## Historical M0 evidence and acceptance
 
 Record sources and verification date, distinguish vendor claims from executed
 tests, and distinguish open source from free plans, enterprise features, and
