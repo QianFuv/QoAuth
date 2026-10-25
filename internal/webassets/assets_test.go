@@ -30,3 +30,12 @@ func TestHtmlPreservesValidatedLogoutFormTarget(t *testing.T) {
 		t.Fatal("native logout form loses its validated target or canonical Origin")
 	}
 }
+
+func TestFontsLoadOnlyFromOwnOrigin(t *testing.T) {
+	response := httptest.NewRecorder()
+	Handler().ServeHTTP(response, httptest.NewRequest("GET", "/", nil))
+	policy := response.Header().Get("Content-Security-Policy")
+	if !strings.Contains(policy, "font-src 'self';") || strings.Contains(policy, "font-src 'self' ") || !strings.HasPrefix(policy, "default-src 'none';") {
+		t.Fatalf("self-hosted fonts must be allowed without external or data sources: %s", policy)
+	}
+}

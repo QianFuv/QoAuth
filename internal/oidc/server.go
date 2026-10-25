@@ -127,7 +127,7 @@ func (s *Server) ServeHTTP(response http.ResponseWriter, request *http.Request) 
 	response.Header().Set("Cache-Control", "no-store")
 	response.Header().Set("X-Content-Type-Options", "nosniff")
 	response.Header().Set("Referrer-Policy", "strict-origin")
-	response.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
+	response.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
 	request.Body = http.MaxBytesReader(response, request.Body, 64<<10)
 	origin, _ := url.Parse(s.config.Issuer)
 	if request.Host != origin.Host {
