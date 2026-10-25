@@ -1068,3 +1068,29 @@ P3 message above on the existing ten documentation paths. Main-only A6 commits:
 9094fa6 authorization, 2fcac4b Linux harness, bcee155 container harness, followed by
 this evidence commit. No push/release/deployment. Existing Ubuntu/engine state and
 local build images are retained; only task-owned ephemeral test resources were removed.
+
+## Frontend redesign evidence (2026-10-25)
+
+User-authorized redesign of every browser page with official Semi components and
+theme tokens, from baseline ac9730d. Server routes, API contract, CSRF/Origin checks,
+consent redirects, OIDC errors and the native RP-logout form are unchanged. The new
+`/` homepage is static: no API request, no session read, no installation data.
+Commits: 3ac0625 form-rule tests, f79023a Semi icon/illustration dependencies
+(already locked transitively), 8737a6c sign-in/console redesign, 3cfd3f9 homepage.
+
+Semi `Form` was not used because it bundles every field type; Semi inputs use a
+small local field wrapper instead. Pages are lazy-loaded: the homepage needs about
+320 KB of JavaScript, the console about 930 KB (uncompressed). The UI was and
+remains English-only; no language switch existed or was removed.
+
+Checks on 3cfd3f9: `npm run build` (tsc + Vite), `npm test` 5/5, `go test` all
+eight packages and `go vet` pass. A temporary synthetic loopback installation was
+driven with local headless Chrome over CDP at 360/390/768/1440: 21/21 checks
+(homepage isolation, reduced motion, login errors, MFA verify/enrollment/recovery
+codes, OIDC consent allow/deny, code exchange, RP logout, all admin mutations,
+member denial, simulated unavailable/expired states), 70 screenshots, no horizontal
+overflow and no console/CSP errors. The task browser's snapshot tool timed out, so
+screenshots came from the CDP run. `/fixture/login` was type-checked and built but
+not browsed. New-name binaries are under ignored `dist/qoauth-redesign-3cfd3f9/`;
+earlier artifacts and the previous embedded bundle copy were kept. No push,
+release or deployment.

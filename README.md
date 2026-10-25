@@ -99,6 +99,10 @@ and have that one proxy overwrite `X-Real-IP` with exactly one client IP. No oth
 forwarded header selects the issuer or bypasses throttling. Explicit local testing
 may use `--development-http` with numeric loopback issuer/listener addresses only.
 
+The embedded Semi UI serves a static product homepage at `/` (no API calls or
+installation data), sign-in, MFA and consent at `/login`, self-service at `/account`
+and administration at `/admin`. Pages are code-split; the copy is English-only.
+
 GET `/readyz` returns only `{"ready":true}` (200) or `{"ready":false}` (503), with
 no cookie and a one-second database deadline. It checks persisted issuer/key binding
 and maintenance/quarantine state. Use the canonical Host even for a proxy-local
