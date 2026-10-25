@@ -108,3 +108,16 @@ license/NOTICE bytes and generated manifests supply artifact-specific evidence;
 package-lock/go.sum alone do not establish linked runtime components. The final
 [dependency inventory](../dependencies.md#artifact-inventories-and-preserved-notices)
 records scope, supplements and remaining license/image boundaries.
+
+## A6 image evidence sources
+
+Checked 2026-10-25: the actual Docker image, extracted executable build information,
+Linux frontend-stage inventory, BuildKit base digests and the supplying Alpine APK
+metadata. [Pinned aports recipe](https://raw.githubusercontent.com/alpinelinux/aports/e78f5987166c6ffbe23f6472e2e8f040298fe2da/main/ca-certificates/APKBUILD)
+identifies ca-certificates 20261020 and the source SHA-512. The exact
+[Alpine source archive](https://gitlab.alpinelinux.org/alpine/ca-certificates/-/archive/20261020/ca-certificates-20261020.tar.bz2)
+was verified against that digest; all 118 shipped certificate DER values occur in
+its certdata.txt. Full [MPL-2.0 text](https://www.mozilla.org/media/MPL/2.0/index.txt)
+and [SPDX MIT text](https://raw.githubusercontent.com/spdx/license-list-data/main/text/MIT.txt)
+are preserved with original attribution and hashes. Source membership and SPDX
+schema validity are evidence, not independent legal clearance or product licensing.

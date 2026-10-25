@@ -91,16 +91,17 @@ is required by this closure. Existing maintenance and security semantics remain.
 | Password cost | 30 sequential Argon2id samples, p50 23.264 ms/p95 26.876 ms; four hash slots; no capacity claim |
 | Browser/accessibility | Owner MFA, reset, disabled-client review/cancel and lossless comma URLs, standard RP/logout, labels/keyboard/390px layout; not WCAG certification |
 | Restore drill | Prior M2.2 executable to current code, both schema 7, real ten-minute quarantine and temporary cleanup; no arbitrary old-schema/downgrade support |
-| Packaging | Two clean revisioned binaries/ZIPs, source ZIP, artifact-specific SPDX/notices/checksums and separate build inventory; local only |
+| Packaging | Two clean revisioned binaries/ZIPs plus an independently versioned image bundle; exact source ZIPs, artifact-specific SPDX/notices/checksums and separate build inventory; local only |
+| Native Linux | Existing Ubuntu WSL2, uid 1000, private ext4; 130 tests/subtests passed, six skips; final binary startup/restart/SIGTERM and maintenance |
+| Final image | Existing Docker 29.9.2; uid 65532, read-only rootfs, private volume, loopback TLS/coreos RP, restart/logout and maintenance; final-image binary scan passed |
 
 Remaining release gates and limits are separate from feature expansion:
 
-- **Linux/image execution:** existing Ubuntu WSL and Docker Desktop installations
-  are present, but no WSL distribution was running and the Docker Linux-engine pipe
-  was absent. Native Linux and Docker build/run/restart/permissions/maintenance remain
-  unexecuted. Starting the Ubuntu WSL runtime or Docker Desktop/Linux engine would
-  start host runtime/services and needs specific authorization; neither was started.
-  Complete image provenance/SBOM/CA-certificate notices with the actual image.
+- **Platform limits:** Linux tests ran on the existing WSL2 kernel with CGO=0, not
+  Linux race detection or bare-metal hardware. Image tests used small synthetic
+  SQLite state, not large-database temporary-file pressure on scratch. Physical
+  power-loss durability remains unverified. Native/image acceptance is now supported
+  by actual runs; these limits are not missing startup permission or feature work.
 - **License decision:** QoAuth has no selected source license. Artifact NOASSERTION
   is not permission to distribute. Preserve the shipped notices and review the
   recorded build-only optional-package gaps before redistributing build tools.

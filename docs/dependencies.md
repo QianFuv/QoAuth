@@ -1,6 +1,6 @@
 # Dependency choices and license risks
 
-Verified: 2026-10-25. A5 keeps the tested Go module graph and npm lockfile. Dependencies
+Verified: 2026-10-25. A5/A6 keep the tested Go module graph and npm lockfile. Dependencies
 were downloaded into project-local caches/node_modules; no system toolchain was
 installed or upgraded. The shortlist retains alternatives as research, not installed
 requirements. Only the selected set below is part of the current implementation.
@@ -19,7 +19,7 @@ storage. Enterprise connectors and infrastructure are not prerequisites.
 | x/crypto / pquerna/otp | v0.58.0 / v1.5.0 | BSD-3-Clause / Apache-2.0 with NOTICE; Argon2id and TOTP |
 | x/sys / x/text | v0.49.0 / v0.43.0 | BSD-3-Clause; Windows ACLs and password normalization |
 | boombuler/barcode | v1.0.1-0.20190219062509-6c824513bacc | MIT; OTP transitive dependency |
-| Embedded SQLite engine | 3.54.1 | Public domain engine; actual runtime queried on Windows |
+| Embedded SQLite engine | 3.54.1 | Public domain engine; actual runtime checked on Windows and Linux |
 | React / React DOM | 19.3.1 / 19.3.1 | MIT |
 | Semi UI / Vite / TypeScript | 2.104.0 / 8.3.5 / 5.9.3 | MIT / MIT / Apache-2.0 |
 | React / React DOM type packages | 19.2.2 / 19.2.2 | MIT |
@@ -61,8 +61,10 @@ Semi's deep Button import and React 19 adapter build under the intended CSP with
 the unused full-package animation dependency's eval warning. Final bundle: about
 278.09 kB JavaScript and 52.99 kB CSS before gzip (85.41/9.07 kB compressed).
 Chrome exercised the real temporary login/consent/Go RP/logout and administrator
-paths, including reset and lossless disabled-client review/replacement. Full accessibility audit
-and native Linux/container runs remain outstanding.
+paths, including reset and lossless disabled-client review/replacement. Full
+accessibility audit remains outstanding. Native Linux and final-container synthetic
+runs passed under A6; the actual Linux-built frontend inventory and embedded bytes
+match the earlier verified assets.
 
 ## Artifact inventories and preserved notices
 
@@ -104,9 +106,28 @@ third-party files. The installed Rolldown Windows binding declares MIT but has n
 root license file; that gap is explicit, and build executables are not redistributed.
 
 The source ZIP is the exact clean commit; explicit dirty-preview mode omits it.
-A container SBOM and CA-certificate provenance require the actual image, which has
-not been built. QoAuth's own license remains NOASSERTION pending a maintainer choice;
-no LICENSE file or release permission has been invented.
+A6 separately packages the actual Linux image at source `bcee155a2fcf`, with 44 SPDX
+packages and 62 notice records. The extracted image executable has the same 29 Go
+modules and Go 1.26.10 toolchain; Linux-built Vite inventory and all embedded asset
+bytes match. Original Go/frontend notices are reused only after those comparisons.
+Its actual binary govulncheck scan reports zero affected symbols/imported packages,
+with the same unused OpenPGP module-only advisory. The Docker build excludes .git;
+its revision is bound by image label/BuildKit provenance, not invented binary VCS data.
+
+The scratch image additionally ships only `/etc/ssl/certs/ca-certificates.crt` from
+Alpine 3.24.3 package `ca-certificates-bundle 20261020-r0`, declared MPL-2.0 AND MIT.
+The [pinned Alpine package recipe](https://raw.githubusercontent.com/alpinelinux/aports/e78f5987166c6ffbe23f6472e2e8f040298fe2da/main/ca-certificates/APKBUILD)
+provides the source SHA-512. The verified source archive contains every shipped DER
+certificate (118 in the bundle, 169 in certdata source). The image bundle preserves
+certdata source, package attribution, [MPL-2.0](https://www.mozilla.org/media/MPL/2.0/index.txt)
+and MIT text, source URL/hash and supplying base-image digests. No Alpine package
+manager, CA-management utilities or source-only GPL build tool is claimed in runtime.
+
+Image SPDX passes the official schema; archive/config-ID, all manifest/notice hashes
+and outer ZIP integrity were checked. The notices accompany the docker-save archive;
+they are not copied inside the image. Preserve the full companion bundle. QoAuth's
+own license remains NOASSERTION pending a maintainer choice; no LICENSE file or
+release permission has been invented.
 
 ## Protocol and storage shortlist
 

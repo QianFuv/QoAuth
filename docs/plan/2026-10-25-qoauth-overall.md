@@ -3,16 +3,16 @@
 Protocol Version: 2026-09-05
 Protocol Revision: autonomous-execution-git-flow-v2
 
-Revision 9, 2026-10-25. Status: A5 bounded implementation and available local
-verification complete; submitted for parent acceptance. Native Linux/image runs
-remain unverified. No end-user internal-plan approval wait or new feature phase is
-introduced. This is the single checklist; earlier stage records below are historical.
-The final evidence section owns current results and limits.
+Revision 10, 2026-10-25. Status: A5 product closure accepted; A6 native Linux and
+final-image isolated validation, provenance and local packaging complete for parent
+review. No end-user internal-plan approval wait or new feature phase is introduced.
+This is the single checklist; earlier stage records are historical. The final A6
+section owns current platform results, artifact revisions and remaining limits.
 
 ## Outcome and boundaries
 
 One Go process, one SQLite database, one issuer, embedded React/TypeScript/Vite/Semi
-UI. Build Windows/Linux amd64 binaries and validate Linux amd64 container config.
+UI. Build Windows/Linux amd64 binaries and build/run the Linux amd64 image locally.
 Use standard OIDC code with S256 PKCE, signed JWT ID Tokens, opaque access tokens
 and authenticated introspection. A genuine standard Go RP must exercise the actual
 OP handler and SQLite adapter; a private protocol cannot substitute for OIDC.
@@ -936,8 +936,8 @@ need not be started. No sudo, installation or host configuration change occurred
 |---|---|---|---|
 | P0 | Record A6, actual resource/runtime inspection and this checklist | docs(plan): record authorized platform validation | Committed 9094fa6 |
 | P1 | Execute Linux-native tests and final binary smoke on private ext4 temporary state; only necessary portability-test corrections | test(platform): validate isolated Linux execution | Committed 2fcac4b |
-| P2 | Build existing image with CPU/memory limits; non-root/read-only/loopback TLS synthetic lifecycle, restart and maintenance; necessary recipe fixes only | test(container): verify isolated image lifecycle | Done; this record's commit |
-| P3 | Actual image provenance/notices/SBOM and updated finite evidence; retain all unexecuted limits | docs(validation): record Linux and container evidence | Pending |
+| P2 | Build existing image with CPU/memory limits; non-root/read-only/loopback TLS synthetic lifecycle, restart and maintenance; necessary recipe fixes only | test(container): verify isolated image lifecycle | Committed bcee155 |
+| P3 | Actual image provenance/notices/SBOM and updated finite evidence; retain all unexecuted limits | docs(validation): record Linux and container evidence | Done; this record's commit |
 
 No additional product feature is authorized. Existing Windows race/browser/security
 evidence is reusable for unchanged inputs; native checks must actually run before
@@ -981,6 +981,90 @@ the earlier real ten-minute drill; this run verifies startup denial, not clock b
 
 The initial validation image's explicit revision label was stale (6d9f87f), while
 BuildKit correctly recorded source context 2fcac4b. It is not the final handoff image.
-A clean post-harness build with the exact current revision label and retained
-BuildKit provenance will replace it before export, with final-image checks recorded
-below. Base image digests and actual CA/binary evidence are being collected locally.
+The clean post-harness build at bcee155 has the exact revision label and matching
+BuildKit context provenance. It was separately retested and exported as documented
+below. Neither the earlier validation label nor an older executable's VCS metadata
+was reused to describe the final image.
+
+### A6 final platform evidence and artifacts
+
+Final image source: `bcee155a2fcfc7803ecaaea03428359f1d476d5c`, clean main at build.
+The final documentation commit changes no production code, dependency, Dockerfile,
+embedded asset or tested harness input. Windows race/browser/load/restore evidence
+above remains applicable to its original inputs; those runs were not relabeled as
+new Linux results. Native Linux/image execution closes the former platform gap.
+
+| Actual check | Result and evidence |
+|---|---|
+| Linux tests | Eight self-contained CGO=0 binaries; 130 tests/subtests passed, six helper/opt-in skips; `.cache/platform-a6/linux-results-r1/` |
+| Final standalone Linux binary | Existing A5 artifact SHA `5da3b258fab86e6328ee40c8c89e788cd64c027968ae818e844cae13d3a151d3`; native ext4/uid 1000 smoke, real SIGTERM, restart and maintenance passed |
+| Final Docker build | Docker 29.9.2, Linux amd64, exact source/label bcee155, BuildKit metadata; build memory 1.5 GiB and CPU quota 1 per executor |
+| Final container lifecycle | `.cache/platform-a6/container-results-final/report.json`; uid 65532, read-only rootfs, private volume, loopback HTTPS, owner MFA and real coreos RP, restart, confirmed logout, SIGTERM, lock/backup/rotation/restore/cleanup passed |
+| Final extracted executable | SHA `14bb189dc4433978e9853e3ecf770156116e476cbe13331208609de451ce85c9`; go1.26.10, 29 actual Go modules, CGO=0; govulncheck v1.9.0 zero affected symbols/imported packages, one unused module-only OpenPGP advisory |
+| Frontend and notices | Actual Linux frontend-stage Vite inventory equals the A5 inventory; all three embedded asset byte sequences match. Go LICENSE/PATENTS and module graph match before reusing original notices |
+| CA certificate provenance | Actual Alpine 3.24.3 supplying package ca-certificates-bundle 20261020-r0; exact source SHA-512 checked against pinned aports; all 118 shipped DER certificates present in supplied certdata source |
+| Image packaging | 44 SPDX packages, 62 notice records; official SPDX 2.3.1 schema passes, all hashes and relationships checked; docker-save config digest equals final image ID; outer ZIP CRC/member checks pass |
+| Cleanup and boundaries | Both harness reports confirm removal of task-owned temporary state/processes; Docker label queries show no remaining test containers/volumes. No unrelated image/volume/WSL deletion, push, deployment, elevation or host setting change |
+
+Native commands used the existing Ubuntu distribution and its already-configured
+engine, not Docker Desktop. Cross-compilation used existing Windows Go, project-local
+caches, `GOTOOLCHAIN=local`, `GOOS=linux`, `GOARCH=amd64`, `CGO_ENABLED=0`, bounded
+`-p 2`, and no Linux Go installation. The committed harnesses own timeouts and
+resource cleanup; the representative invocations were:
+
+```text
+wsl.exe -d Ubuntu --exec python3 /mnt/d/QianFuv/Go/QoAuth/scripts/verify-linux.py --tests-dir /mnt/d/QianFuv/Go/QoAuth/.cache/platform-a6/linux-tests --binary /mnt/d/QianFuv/Go/QoAuth/dist/0.1.0-dev.826200d48959/linux-amd64/qoauth-linux-amd64 --output /mnt/d/QianFuv/Go/QoAuth/.cache/platform-a6/linux-results-r1
+wsl.exe -d Ubuntu --exec timeout 900s docker build --platform linux/amd64 --resource memory=1536m --resource cpu-period=100000 --resource cpu-quota=100000 --progress plain --label org.opencontainers.image.revision=bcee155a2fcfc7803ecaaea03428359f1d476d5c --iidfile /mnt/d/QianFuv/Go/QoAuth/.cache/platform-a6/final-image-id.txt --metadata-file /mnt/d/QianFuv/Go/QoAuth/.cache/platform-a6/final-build-metadata.json --tag qoauth-local:0.1.0-dev-linux-a6 /mnt/d/QianFuv/Go/QoAuth
+wsl.exe -d Ubuntu --exec python3 /mnt/d/QianFuv/Go/QoAuth/scripts/verify-container.py --image sha256:eaa77dbcb7e53a9f426099c9bb72c60f375bc5ac0edce4ec1f1610cb329e115f --rp-binary /mnt/d/QianFuv/Go/QoAuth/.cache/platform-a6/go-rp-linux --output /mnt/d/QianFuv/Go/QoAuth/.cache/platform-a6/container-results-final
+go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 -mode=binary .cache/platform-a6/image-evidence-final-r2/qoauth
+```
+
+Output directories must be new for a rerun. The image label and BuildKit context
+revision establish source provenance; `.git` is excluded from the Docker build,
+so the image executable has no embedded vcs.revision. Its actual build metadata is
+retained without inventing one. Base materials were:
+
+- `golang:1.26.10-alpine`, linux/amd64 digest
+  `sha256:27f2d3b83cfc5803c8078f8e730af0f7c431bf067afaec8f60a36fb763187cba`.
+- `node:24.22.1-alpine`, linux/amd64 digest
+  `sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53`.
+
+Versioned local handoff:
+
+- Existing Windows/Linux binaries and ZIPs remain `dist/0.1.0-dev.826200d48959/`.
+  They were not rebuilt or renamed to a later docs revision.
+- Image companion directory: `dist/0.1.0-dev.bcee155a2fcf-linux-image/`.
+  It includes the compressed docker-save archive, exact source ZIP, build/CA
+  provenance, validation report, image-specific SPDX, original LICENSES/notices,
+  certdata source, finite release gates and file-hash manifest.
+- Whole companion ZIP: `dist/qoauth-0.1.0-dev.bcee155a2fcf-linux-image.zip`,
+  7,690,697 bytes, SHA-256
+  `b9a7de774f013111572fd1af58ce9e790fdebddf8cb5880f61d6b2aac3789386`.
+- Nested image archive: 7,008,720 bytes, SHA-256
+  `a2dd72534d4f978006982b04c981ed436e8b290299555357003174939df428b9`.
+  Its final image ID is
+  `sha256:eaa77dbcb7e53a9f426099c9bb72c60f375bc5ac0edce4ec1f1610cb329e115f`;
+  local version tag is `qoauth-local:0.1.0-dev.bcee155a2fcf`.
+
+The license bundle accompanies the image archive and is not embedded in scratch;
+retain the whole companion package for redistribution review. CA package metadata
+is MPL-2.0 AND MIT; source-only GPL utilities were neither copied into the image
+nor redistributed in the companion. QoAuth remains NOASSERTION. Schema validation,
+source hashes and test passes do not select a source license or authorize release.
+
+Remaining limits are finite: own source-license selection before distribution;
+real installation/issuer/proxy/backup custody review; assessment of the deliberately
+small password blocklist; no full OIDF certification, exhaustive audit/fuzzing,
+Linux race detection, constrained-small-host capacity, physical power-loss or large
+SQLite temporary-file pressure claim. Native tests use the WSL2 Linux kernel, not
+bare-metal hardware. Container quarantine startup refusal passed; the earlier
+real ten-minute Windows recovery drill remains the expiry evidence. Unix foreign
+owner rejection uses fabricated stat metadata rather than a real foreign-owned inode.
+No additional enterprise or product feature stage is scheduled.
+
+P3 documentation checks cover UTF-8/links/anchors and Git whitespace; source and
+harness inputs are unchanged from their passing runs. Final commit uses the exact
+P3 message above on the existing ten documentation paths. Main-only A6 commits:
+9094fa6 authorization, 2fcac4b Linux harness, bcee155 container harness, followed by
+this evidence commit. No push/release/deployment. Existing Ubuntu/engine state and
+local build images are retained; only task-owned ephemeral test resources were removed.

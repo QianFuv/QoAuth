@@ -1,10 +1,10 @@
 # Lightweight product scope
 
-Review revision: 5, 2026-10-25. The lightweight scope remains authoritative.
+Review revision: 6, 2026-10-25. The lightweight scope remains authoritative.
 A5's bounded product closure is implemented and locally verified for parent review.
 Core identity, maintenance, administrator reset, disabled-client review and readiness
-remain one small runtime. Targeted protocol checks passed; full certification and
-native Linux/image execution are not claimed. See the finite roadmap gates.
+remain one small runtime. Targeted protocol checks and A6 native Linux/final-image
+synthetic execution passed; full certification is not claimed. See the finite roadmap gates.
 
 ## Intended result
 
@@ -93,7 +93,7 @@ it does not establish password-login throughput, memory stability or maximum sca
 Thirty sequential Argon2id hashes measured p50 23.264 ms/p95 26.876 ms; concurrency
 is bounded to four slots. A smaller-host capacity guarantee needs actual evidence.
 
-Current handoff: A5's implementation and available isolated verification are complete
-for parent review, with no new feature stage scheduled. Native Linux/image and
-licensing/real-installation gates remain explicit. Real credentials, external
-bindings and deployment remain outside this task.
+Current handoff: A5 implementation was accepted and A6 native Linux/image validation
+is complete for parent review, with no new feature stage scheduled. Source-license,
+real-installation and the recorded broader assurance limits remain explicit. Real
+credentials, external bindings and deployment remain outside this task.

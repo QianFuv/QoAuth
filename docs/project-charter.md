@@ -2,7 +2,25 @@
 
 Recorded: 2026-10-25 (Asia/Singapore). Product name: QoAuth.
 
-## Current authorization A5
+## Current authorization A6
+
+The actual parent message beginning "已审核当前交付，功能范围收口，不再加功能"
+accepts product scope and clarifies that ordinary non-elevated startup of installed
+Docker Desktop or existing Ubuntu WSL is within the platform-test task. Installing
+components, changing Windows features/security/network/service startup settings,
+elevation, real credentials, deployment and unrelated cleanup remain excluded.
+It requires resource inspection and bounded local synthetic tests, and retains
+main-only logical commits and the undecided source license.
+
+Existing Ubuntu started as uid 1000 and its already-configured Docker engine was
+available; Docker Desktop was not needed. Native tests, final Linux binary smoke,
+final image lifecycle and artifact provenance/notices now pass within recorded
+limits. Only task-owned temporary processes/containers/volumes/state were removed.
+No further feature phase is scheduled. Final standalone artifacts remain at 826200d;
+the separate image/source bundle records bcee155. Evidence-only docs do not relabel
+those builds. No push, release, deployment or source-license choice occurred.
+
+## Historical authorization A5
 
 The actual parent message beginning "已审阅 M2.2 证据和剩余工作，批准下一阶段限定收口"
 authorized administrator password reset UI, disabled-application review/prefill,
@@ -13,10 +31,9 @@ in-scope review corrections. It does not permit enterprise expansion, real accou
 system service/security changes, push, release or deployment. This is the parent's
 actual decision, not invented original end-user wording or a new approval wait.
 
-The bounded work is complete for parent acceptance. Final binaries are tied to
-826200d; later evidence-only documentation does not change their provenance. Native
-Linux/image verification and the source-license decision remain explicitly open.
-No further feature phase is automatically authorized or scheduled.
+A5 product work was subsequently accepted by A6. Its final binaries are tied to
+826200d. The earlier blanket runtime-startup permission interpretation was corrected
+by the actual A6 message above; the source-license decision remains open.
 
 ## Historical authorization A4
 
@@ -89,7 +106,7 @@ to a future QoAuth policy service. These boundaries must be reflected in the des
 - Windows amd64 and Linux amd64 executables; Linux amd64 Docker image.
 - Work directly on `main`; one logical change per commit. No development branch
   or worktree, remote push, release, or deployment.
-- Original M0 stop: documentation/research only; subsequently superseded by A2/A3/A4/A5 within their bounded implementation scopes.
+- Original M0 stop: documentation/research only; subsequently superseded by A2/A3/A4/A5/A6 within their bounded scopes.
 - Compare Keycloak, authentik, ZITADEL, Ory, Casdoor, Authelia, Auth0, Okta,
   Microsoft Entra, and Clerk; select representative systems for deeper analysis.
 - Cover product scenarios, feature tiers, architecture, storage, deployment,

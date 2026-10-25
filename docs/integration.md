@@ -128,7 +128,9 @@ server-side app/BFF. A pure SPA cannot keep a client secret; its CORS/browser-to
 profile needs separate integration validation. Native/device flows, external IdPs,
 machine clients and back-channel logout are optional later work, not promised here.
 A5's targeted local protocol checks passed with installed clients; the full OIDF
-harness was unavailable and was not installed. Native Linux/image runs remain open.
+harness was unavailable and was not installed. A6 ran production OP tests on native
+Linux and the real coreos RP against the final image behind a synthetic loopback
+HTTPS proxy; no real issuer, host trust or third-party account was configured.
 M2.2 tests ordinary signing rotation with the
 standard RP: new kid triggers key retrieval; old public keys retire by persisted
 deadline; opaque access/refresh remain usable because AES is unchanged. A restore

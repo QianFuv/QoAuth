@@ -1,11 +1,13 @@
 # Focused threat model, tests and risks
 
-Review revision: 5, 2026-10-25. Single installation, local users and clients.
+Review revision: 6, 2026-10-25. Single installation, local users and clients.
 A5's final scoped Windows race run passed 135 tests/subtests; browser, second RP,
 load, compatible-version restore and binary maintenance/restart ran separately.
 The [checklist](plan/2026-10-25-qoauth-overall.md#final-bounded-delivery-evidence-2026-10-25)
-records actual results. This matrix does not claim exhaustive fuzzing, certification,
-physical power-loss testing or unexecuted Linux/container checks.
+records actual results. A6 adds 130 passing native Linux tests/subtests (six skips),
+Linux binary smoke and final-image loopback HTTPS/RP/maintenance validation. This
+matrix does not claim exhaustive fuzzing, certification, Linux race coverage,
+large-database scratch pressure or physical power-loss durability.
 
 ## Assets and boundaries
 
@@ -84,8 +86,10 @@ Full OIDF profiles were not run. Retain exact versions, commands, results and li
 A separate full conformance harness is optional beyond this bounded closure,
 not an instruction to add infrastructure. No real SaaS accounts, public callbacks
 or production credentials are used. The suite has separate runtime/license needs;
-do not install Docker/Java/databases or alter the host to manufacture a test pass. Native OS/image smoke and backup/rotation
-tests remain mandatory for their deliverable, not replaced by cross-compilation.
+do not install Docker/Java/databases or alter host security to manufacture a pass.
+Ordinary non-elevated startup of installed Ubuntu/Docker was explicitly authorized
+by A6 and used for native OS/image tests. Backup/rotation and restart now have
+actual Linux/container evidence rather than only cross-compilation.
 
 ## Small risk register
 
@@ -134,10 +138,10 @@ not logged; protocol logs redact arbitrary attributes and messages.
 
 A5 adds the second RP, compatible M2.2/current schema-7 restore drill, local load/
 password-cost measurements, basic browser accessibility and artifact notices/SBOM.
-Remaining limits are native Linux/image execution and image provenance, own source
-license, comprehensive accessibility/security coverage, full OIDF and real-exposure
-assessment of the deliberately small password blocklist. No capacity or production
-security verdict follows from the bounded Windows evidence.
+A6 adds native Linux/final-image execution and image provenance/notices. Remaining
+limits are own source license, comprehensive accessibility/security coverage, full
+OIDF and real-exposure assessment of the deliberately small password blocklist.
+No capacity or production security verdict follows from these bounded tests.
 Private key material is held in a protected local file, not hardware-backed storage;
 host administrators remain trusted. No blanket production-ready claim is warranted.
 

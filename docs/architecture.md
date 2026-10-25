@@ -1,6 +1,6 @@
 # Lightweight architecture and minimal operations
 
-Review revision: 5, 2026-10-25. Parent A5 authorized final bounded closure.
+Review revision: 6, 2026-10-25. A5 closed product scope; A6 authorized existing-runtime platform validation.
 The lightweight scope is unchanged. Implemented behavior is distinguished below
 from remaining operations/release targets; no production-readiness claim is made.
 
@@ -106,7 +106,8 @@ Windows validates DACLs and current user/SYSTEM/Administrators ownership; Unix c
 owner/mode. Production startup also validates DB/WAL/SHM/journal file types and
 permissions. It never repairs unsafe existing permissions or regenerates lost keys.
 Temporary synthetic tests cover file corruption/context swaps and a separate-process
-restart. Actual Windows executable restart preserved JWKS; native Linux remains open.
+restart. Actual Windows and native Linux executable restarts preserved JWKS; the
+final non-root image restart also preserved synthetic sessions and signing state.
 
 Admission caps: 4096 anonymous sessions, 2048 login transactions globally, 16 per
 browser. Each creation prunes at most 64 expired records of each kind; cleanup
@@ -285,7 +286,8 @@ minutes from staging; every JWKS/verification-key lookup enforces its saved dead
 Another rotation during overlap is rejected. Restart cannot extend it. AES stays
 unchanged, so ordinary rotation preserves TOTP and existing opaque protocol tokens.
 Restore is different: it drops all previous signing trust and all token DB state.
-Physical power-loss durability and native Linux filesystem behavior remain untested.
+Native Linux ext4 ownership/modes, locking, publication and process-exit recovery
+passed on Ubuntu WSL2. Physical power-loss durability remains untested.
 
 Run `cleanup --data-dir <stopped-installation> --batch-size 128` for one transaction.
 Allowed batches are 1-256 rows **per table**, output contains counts only. Delete

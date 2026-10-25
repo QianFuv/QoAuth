@@ -16,10 +16,13 @@ The real service is `cmd/qoauth`; `internal/fixture` is test-only and is not imp
 by it. All validation used temporary synthetic state. This is not a production
 readiness or OpenID certification claim.
 
-Windows amd64 and Linux amd64 binaries build. The Windows binary was initialized,
-started and restarted with a temporary installation and unchanged JWKS. Linux
-native execution and Docker image build/run remain unverified. Compose config
-validates; no system service, deployment, real owner or external binding was created.
+Windows/Linux amd64 binaries and the Linux amd64 image build and run locally.
+Windows restart/maintenance and 135 race tests/subtests passed; native Ubuntu WSL2
+execution passed 130 tests/subtests (six skips), plus the final Linux binary smoke.
+The final image passed non-root/read-only storage, loopback HTTPS, standard Go RP,
+restart/logout and maintenance checks. Only temporary synthetic installations were
+used. Existing Ubuntu/Docker started normally; no component installation, elevation,
+host security/service-setting change, deployment or real access was performed.
 
 ## Build and check
 
@@ -57,7 +60,21 @@ debug information is omitted. The final local preview is
 not relabel its source revision. Each platform directory contains its executable,
 SBOM, notices and manifest. `build-development/inventory.json` separates the wider
 build/test graph. The source ZIP includes Docker/Compose recipes and the Go RP
-example. No image was built; these are local previews, not published releases.
+example. These standalone artifacts retain their original source revision.
+
+The separate [Linux image bundle](dist/qoauth-0.1.0-dev.bcee155a2fcf-linux-image.zip)
+was built from clean `bcee155a2fcfc7803ecaaea03428359f1d476d5c`. Its
+[manifest](dist/0.1.0-dev.bcee155a2fcf-linux-image/manifest.json) binds the docker-save
+archive, image ID, build provenance, exact source ZIP, image-specific SPDX,
+original notices and CA source. Preserve the companion notices with the image;
+they are not embedded inside the scratch filesystem. No image was pushed or deployed.
+
+`scripts/verify-linux.py` executes precompiled Linux test binaries on private native
+storage. `scripts/verify-container.py` exercises one supplied immutable image using
+an existing Docker engine, synthetic local TLS and task-owned containers/volume.
+It needs the compiled Go RP example and existing Python/OpenSSL, not host trust changes.
+See [A6 commands and evidence](docs/plan/2026-10-25-qoauth-overall.md#platform-validation-clarification-and-execution-a6).
+No new feature phase is scheduled.
 
 ## Service entry points
 
@@ -103,8 +120,11 @@ before maintenance; no background backup scheduler or remote service is installe
 
 Docker listens on `0.0.0.0:8080` inside the container; Compose publishes only
 `127.0.0.1:8080` on the host. The image contains no owner/keys; explicit initialization
-and persistent private storage are still required. Proxy/TLS/network changes and
-actual deployment need their own authorization.
+and persistent private storage are still required. When overriding the serve command,
+retain `--data-dir /data/state` and configure `--trusted-proxy` with the actual
+container-visible proxy peer. Compose does not guess that address; it may differ
+from host loopback. The proxy must overwrite `X-Real-IP` and preserve canonical Host.
+Real proxy/TLS/network changes and deployment need their own authorization.
 
 ## Minimal maintenance
 
@@ -132,9 +152,9 @@ See the [operating and recovery procedure](docs/architecture.md#maintenance-and-
 for client/account reconciliation, interrupted operations and version restrictions.
 
 [Remaining release gates](docs/roadmap.md#remaining-bounded-work) are finite:
-native Linux/image execution and image-specific provenance/notices, QoAuth's own
-source-license choice, and real installation/proxy review. Basic accessibility,
-local load and a compatible M2.2-to-current restore drill passed within recorded
+QoAuth's own source-license choice and real installation/proxy review. Native Linux
+and final-image synthetic execution plus image-specific provenance/notices now pass.
+Basic accessibility, local load and a compatible M2.2-to-current restore drill passed within recorded
 limits. Full OIDF certification, broad capacity claims and a comprehensive
 accessibility/security audit are not claimed. No further feature stage is scheduled.
 
