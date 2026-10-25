@@ -3,8 +3,8 @@
 Protocol Version: 2026-09-05
 Protocol Revision: autonomous-execution-git-flow-v2
 
-Revision 7, 2026-10-25. Status: M2.1 accepted; M2.2 implemented and locally
-verified under A4, submitted for parent acceptance. Parent A4 accepts protected plaintext key custody and the minimal
+Revision 8, 2026-10-25. Status: M2.2 accepted; final bounded product/quality
+closure authorized by A5 and in progress. Parent A4 accepts protected plaintext key custody and the minimal
 maintenance scope below. Linux native/image runs remain
 unverified. There is no outstanding end-user approval gate for this scope. This is the single
 execution checklist; do not create another plan for each small step.
@@ -675,3 +675,42 @@ password-reset UI, disabled-client recovery visibility, password/readiness asses
 then second RP/OIDF, native Linux/image runtime, load/accessibility, upgrade drill and
 license/SBOM packaging. These are proposals for the parent's next internal decision,
 not an end-user approval wait or evidence that M2.2 already passed those gates.
+
+
+## Final bounded closure authorization (A5)
+
+The actual parent message beginning "已审阅 M2.2 证据和剩余工作，批准下一阶段限定收口"
+approves the four bounded changes below plus in-scope quality closure, logical
+main commits and isolated synthetic tests. It explicitly excludes SMTP/public
+recovery, enterprise expansion, push/release/deploy, real credentials and system
+service/security changes. Baseline is clean main 7ced5e1256fd82250ffe5c2e3fc3e0604a772472.
+This supersedes the prior proposal wait. No further internal-plan approval is needed.
+
+| Task | Bounded scope | Intended logical commit | State |
+|---|---|---|---|
+| C0 | A5 and this single checklist | docs(plan): record final closure authorization | In progress |
+| C1 | Existing password-policy consistency, shared new-password field, precise safe errors | fix(identity): align password policy across entry points | Pending |
+| C2 | Existing administrator reset API/UI with fresh MFA and CSRF, preserved factor/invalidation | feat(admin): expose controlled password reset | Pending |
+| C3 | Disabled-client list/safe settings and explicit review-prefill, no restored grants or secrets | feat(admin): review disabled application settings | Pending |
+| C4 | Minimal bounded readiness with generic public status and store/key/install checks | feat(health): expose bounded readiness checks | Pending |
+| C5 | Second pinned RP implementation and focused local protocol checks | test(oidc): verify a second standard relying party | Pending |
+| C6 | Existing phase-version restore/upgrade drill, bounded load, browser/accessibility evidence | test(validation): exercise release closure scenarios | Pending |
+| C7 | Versioned local binaries, graph/NOTICE/license/SBOM inventory and packaging script | build(distribution): assemble versioned local artifacts | Pending |
+| C8 | Actual evidence, runbook and finite remaining gates; no next feature expansion | docs(validation): close bounded delivery checks | Pending |
+
+A5 authorizes necessary in-scope fixes and their separate logical commits; record
+any such correction before committing. Preserve explicit paths, index diff and
+commit recovery evidence. No branches/worktrees, history rewriting or external writes.
+
+Acceptance: new-password rules agree for CLI/API/UI including normalized Unicode
+and UTF-8 byte limits; administrator reset rejects stale/MFA-incomplete/CSRF calls,
+preserves enrolled MFA and invalidates sessions/pending codes/refresh families;
+disabled configuration reads never disclose secret/verifier and re-registration
+never revives access. Readiness is read-only, time-bounded, secret-free, fails closed
+on unavailable/mismatched/maintenance state, and creates no sessions. Run scoped
+Go test/vet/race, frontend build, dependency scans, browser and final-binary smoke.
+Use already installed/pinned RP/tools; local focused protocol checks are not OIDF
+certification. Cross-version testing operates only on copied temporary synthetic
+state and never checks out another Git branch. License inventory is not a source
+license decision. Record Linux/image execution honestly; do not start/install system
+services or change security configuration to obtain a pass.
