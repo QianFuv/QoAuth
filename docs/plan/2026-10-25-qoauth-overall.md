@@ -247,7 +247,7 @@ but execution only with temporary isolated synthetic credentials/databases.
 | U1 | This acceptance/execution record | docs(plan): record M2.1 implementation approval | Done: ef23df8 |
 | U2 | Password/TOTP/key primitives, SQLite identity/session/client transitions, dependency locks and tests | feat(identity): persist credentials and enforce atomic session security | Done: 788a4f6 |
 | U3 | Production config/CLI/OP, account/management APIs, Go RP, private-directory/store support and container command wiring | feat(auth): connect local accounts to standard OIDC sessions | Done: 0503b9d |
-| U4 | Embedded Semi screens, UI response contract and bounded browser harness | feat(ui): add local authentication and management screens | Done; commit follows |
+| U4 | Embedded Semi screens, UI response contract and bounded browser harness | feat(ui): add local authentication and management screens | Done: 20098bf |
 | U5 | Final security/build evidence, deployment limits and next bounded scope | docs(validation): record M2.1 authentication evidence | Pending |
 
 Mandatory checks extend V1-V6: secure cookie attributes and origin/CSRF binding;
@@ -342,3 +342,15 @@ Chrome extensions emitted their own CSP errors, and their settings were not chan
 The harness is opt-in, test-only, bounded to ten minutes and cleans temporary state.
 All test servers/RP child processes were stopped; the Chrome tab was closed.
 Screenshot evidence is ignored `.cache/m21-admin.png`, containing synthetic state.
+
+Artifact scan correction (A3 scope): `build: retain symbols for vulnerability verification`
+changes only scripts/build.ps1, Dockerfile and this record. Both initial stripped
+(-s -w) artifacts reported GO-2026-5932 because govulncheck v1.9.0 falls back to
+module-level matching without symbols. The actual graph uses Argon2, not OpenPGP.
+Retaining symbols (-w, no -s) lets the final Windows/Linux binaries both pass with
+zero affected symbols/imported packages; one non-imported module advisory remains.
+See the tagged scanner implementation and official advisory in dependencies.md.
+Both targets rebuild; Compose config validates. Actual Windows binary initialization,
+HTTP discovery/embedded UI, two separate serve processes and unchanged JWKS pass
+using a temporary synthetic installation, removed after stopping both processes.
+Linux and container execution remain unverified; no service was installed or started.

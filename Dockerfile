@@ -11,7 +11,7 @@ WORKDIR /src
 COPY go.mod ./
 COPY . ./
 COPY --from=frontend /src/internal/webassets/dist ./internal/webassets/dist
-RUN GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /qoauth ./cmd/qoauth
+RUN GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-w" -o /qoauth ./cmd/qoauth
 RUN mkdir -m 0700 /state-template
 
 FROM scratch

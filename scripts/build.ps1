@@ -19,7 +19,7 @@ try {
     foreach ($target in @('windows', 'linux')) {
         $env:GOOS = $target
         $extension = if ($target -eq 'windows') { '.exe' } else { '' }
-        go build -trimpath -ldflags='-s -w' -o "dist/qoauth-$target-amd64$extension" ./cmd/qoauth
+        go build -trimpath -ldflags='-w' -o "dist/qoauth-$target-amd64$extension" ./cmd/qoauth
         if ($LASTEXITCODE -ne 0) { throw "$target build failed" }
     }
 } finally {
