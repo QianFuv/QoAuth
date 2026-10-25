@@ -39,16 +39,79 @@ func checkPrivateFile(path string, _ os.FileInfo) error {
 }
 func checkPrivateDirectory(path string, _ os.FileInfo) error { return checkPrivatePath(path, true) }
 func checkPrivatePath(path string, directory bool) error {
-	actual, err := windows.GetNamedSecurityInfo(path, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION)
+	if err := rejectReparse(path); err != nil {
+		return err
+	}
+	actual, err := windows.GetNamedSecurityInfo(path, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION|windows.OWNER_SECURITY_INFORMATION)
 	if err != nil {
 		return err
+	}
+	owner, _, err := actual.Owner()
+	if err != nil || !trustedOwner(owner) {
+		return errors.New("storage owner is not trusted")
 	}
 	wanted, err := privateDescriptor(directory)
 	if err != nil {
 		return err
 	}
-	if normalizedDacl(actual.String()) != normalizedDacl(wanted.String()) {
+	value := actual.String()
+	position := strings.Index(value, "D:")
+	if position < 0 {
+		return errors.New("private access list required")
+	}
+	value = value[position:]
+	if normalizedDacl(value) != normalizedDacl(wanted.String()) {
 		return errors.New("key file access must be restricted to its owner, SYSTEM and administrators")
+	}
+	return nil
+}
+
+func trustedOwner(owner *windows.SID) bool {
+	user, err := windows.GetCurrentProcessToken().GetTokenUser()
+	return err == nil && owner != nil && (owner.String() == user.User.Sid.String() || owner.IsWellKnown(windows.WinLocalSystemSid) || owner.IsWellKnown(windows.WinBuiltinAdministratorsSid))
+}
+
+func checkDatabaseFile(path string, _ os.FileInfo) error {
+	if err := rejectReparse(path); err != nil {
+		return err
+	}
+	actual, err := windows.GetNamedSecurityInfo(path, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION|windows.OWNER_SECURITY_INFORMATION)
+	if err != nil {
+		return err
+	}
+	owner, _, err := actual.Owner()
+	if err != nil || !trustedOwner(owner) {
+		return errors.New("storage owner is not trusted")
+	}
+	wanted, err := privateDescriptor(false)
+	if err != nil {
+		return err
+	}
+	value := actual.String()
+	position := strings.Index(value, "D:")
+	if position < 0 {
+		return errors.New("database access list required")
+	}
+	value = value[position:]
+	value = strings.ReplaceAll(value, ";ID;", ";;")
+	value = strings.ReplaceAll(value, "D:AI", "D:P")
+	if normalizedDacl(value) != normalizedDacl(wanted.String()) {
+		return errors.New("database access must be private")
+	}
+	return nil
+}
+
+func rejectReparse(path string) error {
+	encoded, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return err
+	}
+	attributes, err := windows.GetFileAttributes(encoded)
+	if err != nil {
+		return err
+	}
+	if attributes&windows.FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+		return errors.New("storage reparse points are not allowed")
 	}
 	return nil
 }

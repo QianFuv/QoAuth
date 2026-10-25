@@ -73,6 +73,15 @@ func run(arguments []string, input io.Reader, output io.Writer) error {
 		if err = identity.PrepareDirectory(*directory); err != nil {
 			return err
 		}
+		path := filepath.Join(*directory, "qoauth.db")
+		if _, err := os.Lstat(path); os.IsNotExist(err) {
+			if _, keyErr := os.Lstat(filepath.Join(*directory, "keys.json")); !os.IsNotExist(keyErr) {
+				return errors.New("database missing beside existing keys; restore the installation instead of initializing")
+			}
+		}
+		if err = identity.PrepareDatabase(path, true); err != nil {
+			return err
+		}
 		database, err := store.Open(ctx, filepath.Join(*directory, "qoauth.db"))
 		if err != nil {
 			return errors.New("database unavailable")
@@ -102,6 +111,9 @@ func run(arguments []string, input io.Reader, output io.Writer) error {
 	}
 	keys, err := identity.LoadKeys(*directory)
 	if err != nil {
+		return err
+	}
+	if err = identity.PrepareDatabase(filepath.Join(*directory, "qoauth.db"), false); err != nil {
 		return err
 	}
 	database, err := store.Open(ctx, filepath.Join(*directory, "qoauth.db"))

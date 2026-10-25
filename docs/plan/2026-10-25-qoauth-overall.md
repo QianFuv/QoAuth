@@ -289,3 +289,11 @@ password-authentication events distinguish fresh login from cookie/MFA rotation.
 Deferred foreign-key COMMIT failures prove consent/completion and recovery rollback.
 The remaining review findings (resource limits and file ownership/privacy) are being
 handled before final validation. No production readiness claim is made.
+
+U3 storage correction (A3 scope): `fix(storage): validate private database ownership`
+covers identity private-file checks, CLI startup/init, their tests and this record.
+Windows validates DACL and trusted owner, Unix checks owner and mode, and production
+startup rejects unsafe database/WAL/SHM/journal files and reparse/link targets. Only
+new files receive private permissions. A missing database beside existing keys
+requires restoration instead of creating a new owner. Ten Windows tests/subtests
+pass; the Unix identity test binary cross-compiles, but has not run on Linux.

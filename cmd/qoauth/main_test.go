@@ -49,6 +49,19 @@ func TestCommandInitializationRecoveryAndNewProcess(t *testing.T) {
 	if strings.Contains(output.String(), password) || strings.Contains(string(result), "temporary process factor") {
 		t.Fatal("credential exposed by command")
 	}
+	databasePath := filepath.Join(directory, "qoauth.db")
+	if err = os.Rename(databasePath, databasePath+".saved"); err != nil {
+		t.Fatal(err)
+	}
+	if err = run([]string{"init", "--data-dir", directory, "--username", "replacement"}, strings.NewReader(password), &output); err == nil {
+		t.Fatal("missing database reinitialized under old keys")
+	}
+	if _, err = os.Stat(databasePath); !os.IsNotExist(err) {
+		t.Fatal("replacement database created")
+	}
+	if err = os.Rename(databasePath+".saved", databasePath); err != nil {
+		t.Fatal(err)
+	}
 	if err = os.Remove(filepath.Join(directory, "keys.json")); err != nil {
 		t.Fatal(err)
 	}
