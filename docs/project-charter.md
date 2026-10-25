@@ -2,7 +2,23 @@
 
 Recorded: 2026-10-25 (Asia/Singapore). Product name: QoAuth.
 
-## Requested outcome
+## Current scope correction A1
+
+The user's later instruction on 2026-10-25 supersedes enterprise-oriented design
+assumptions: personal/small-team self-hosting, lightweight Go monolith, embedded UI,
+SQLite first, and the same Windows/Linux/Docker targets. Do not default to complex
+organizations, multi-tenancy, SCIM/LDAP/SAML, PostgreSQL/Redis, queues, microservices
+or Kubernetes. Keep core login/users/clients, safe OIDC/OAuth, scopes, sessions and
+revocation, necessary MFA/recovery, simple UI/logs and minimal operations. Security
+and standards tests remain required. Enterprise functions may appear in competitor
+research only, not in the delivery commitment. The revised product and roadmap
+documents are authoritative; the earlier broad proposal remains only in Git history.
+
+The exact steering includes: “不是为了做那种企业，或者是非常非常复杂的业务流程”
+and “千万不要过度工程化”. It authorizes in-scope document corrections under A0,
+not business implementation. Deliver the revised proposal for review first.
+
+## Original requested outcome (constrained by A1 above)
 
 Research contemporary open-source and proprietary IAM, SSO, OAuth, and OIDC
 systems using official sources. Produce a reviewable overall product and technical

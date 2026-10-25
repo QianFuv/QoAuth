@@ -1,106 +1,92 @@
-# Product goals, boundaries, and feature tiers
+# Lightweight product scope
 
-Review status: proposal, 2026-10-25. No feature below is implemented or verified.
+Review revision: 2, 2026-10-25. This replaces the earlier enterprise-oriented
+proposal following the user's explicit scope correction. Nothing is implemented.
 
-## Product position
+## Intended result
 
-QoAuth should be a self-hosted identity platform for small and medium engineering
-teams and B2B applications that need a clear administrative interface, standard
-SSO, predictable revocation, and a small operational footprint. The differentiator
-is a coherent Go application with embedded UI and documented integration contracts,
-not the largest connector catalog or an unqualified promise of enterprise parity.
+QoAuth is a small, self-hosted identity service for a person or small team with a
+few applications. One Go executable contains its web UI; one local SQLite database
+stores durable state. Deliver Windows amd64 and Linux amd64 binaries and a Linux
+amd64 Docker image. A normal installation needs no external database, Redis,
+message broker, Node runtime, cluster or cloud account.
 
-Success means an application developer can integrate an existing OIDC library,
-an administrator can explain who can access which application, and an operator can
-revoke access, rotate keys, restore a backup, and upgrade without silent loss of
-security state. A novice should not need to implement JWT verification or a login
-protocol to use QoAuth.
+The goal is a complete small authentication system, not enterprise IAM parity.
+An owner can manage users and applications, users can sign in with SSO, applications
+can use standard OIDC, and the owner can revoke access and restore a backup.
 
-## Responsibilities
+## Responsibilities and scenarios
 
-| Responsibility | QoAuth owns | Application/operator owns |
+| Responsibility | QoAuth | Application/operator |
 |---|---|---|
-| Authentication | Local/federated identity verification, assurance, authenticators, login sessions, OIDC ID Tokens | Correct OIDC client callback and its own session |
-| OAuth authorization | Registered clients, consent, audience-bound delegated access, token lifecycles | Resource authorization and enforcement of granted scopes |
-| User directory | Local users, immutable identifiers, tenant memberships, groups, external identity links | Authoritative HR/business records and connector credentials |
-| Administration | Tenant-scoped administration, service principals, auditable configuration | Delegation decisions and operational approval |
-| Business permissions | Coarse app roles and membership claims | Record ownership, payments, workflow, and domain-specific ABAC/ReBAC |
-| Operations | Health/metrics, migrations, backup/restore procedure, secure defaults | Host/network/TLS/DB availability and custody of encryption roots |
+| Authentication | Local accounts, password/MFA verification, SSO session, OIDC identity | Correct RP callback and application session |
+| OAuth authorization | Registered clients, allowed scopes/audiences, consent and token lifecycle | Enforce API scope and record-level permissions |
+| Directory | A single installation's users and app assignments | No HR directory, tenant hierarchy or organization lifecycle |
+| Operations | Simple logs, health, backup/restore, migrations, key rotation | Protect host, state directory, HTTPS configuration and backups |
 
-OAuth alone is not a login protocol. ID Tokens describe authentication for their
-audience; access tokens authorize calls to a resource. Do not use an access token
-as an unvalidated user identity or an ID Token as an API bearer token.
-Sources: [OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html),
-[OAuth security BCP](https://www.rfc-editor.org/rfc/rfc9700.html), verified 2026-10-25.
+OAuth delegates resource access; OIDC adds identity authentication. An ID Token is
+not an API access token. External identity is `(issuer, subject)`, not an email
+address. Sources verified 2026-10-25:
+[OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html),
+[OAuth security BCP](https://www.rfc-editor.org/rfc/rfc9700.html).
 
-## Primary scenarios and measurable outcomes
+Primary scenarios: sign into two small web apps without re-entering credentials;
+disable a user or revoke a session; add one application's callback/scopes through
+the UI; recover a lost factor without bypassing MFA; move the service to another
+host using a verified backup. There is one trust domain and one configured issuer.
 
-| ID | Scenario | Observable outcome |
-|---|---|---|
-| U1 | Employee signs into two internal web applications | The second application reuses an eligible QoAuth session without collecting the password; each app receives only its own authorized claims |
-| U2 | Administrator disables a departing member | New sign-in, refresh, and online token validation fail after the disable transaction; app sessions receive logout notification where integrated |
-| U3 | B2B customer has multiple organizations | Membership and active organization are explicit; organization roles cannot administer another tenant or silently grant global rights |
-| U4 | Existing OIDC/SAML identity provider supplies users | Upstream subjects are mapped by issuer/provider and subject; matching email alone cannot take over an existing account |
-| U5 | User loses an authenticator | Documented recovery restores access at an explicit assurance level, alerts the user, and revokes compromised methods/sessions |
-| U6 | Service calls an internal API | Client credentials grant only assigned audience/scopes, no end-user identity; rotation and disable are observable |
-| U7 | Operator upgrades or loses the host | Versioned data and separate key backup restore into an isolated environment, with tested revocation and issuer continuity |
-| U8 | Developer adds login to a Go web app or SPA | A library-based guide passes login, expiry, logout, and negative-token tests without custom crypto |
+## Required for the initial usable release
 
-## Full-featured target, by layer
+| Area | Bounded commitment |
+|---|---|
+| Users | Owner-created users, enable/disable, password change and controlled password recovery; no public signup by default |
+| Login and SSO | Local password login, one installation-wide SSO session, correct reauthentication and consent behavior |
+| OIDC/OAuth | Discovery/JWKS, code + S256 PKCE, signed ID Tokens, UserInfo, scoped opaque access tokens, introspection, revocation, refresh rotation |
+| Clients | Public vs confidential type, exact registered callback/logout URIs, allowed audiences/scopes and user app assignment; owner-managed registration |
+| Permissions | Two administrative roles: administrator and regular user; per-app assignments/scopes, server-side enforcement; no universal policy language |
+| Sessions | Session list and revoke; logout current/all; user disable blocks new login/refresh/online access validation; RP-initiated logout |
+| MFA/recovery | TOTP and single-use recovery codes; administrators must enroll MFA; users may enroll or be required by policy; reset does not remove MFA |
+| UI/API | Small Users, Applications, Sessions, Activity and Settings screens, plus self-service password/MFA/session pages; minimal documented admin API used by UI |
+| Logs | Redacted structured operational logs and simple security activity records with actor/action/target/time/result; bounded retention |
+| Delivery | Embedded assets, SQLite data directory, native OS smoke tests, non-root Docker image, explicit migration/backup/restore instructions |
+| Integration | One Go web RP example and generic OIDC/BFF instructions; happy-path and negative tests |
 
-“Full-featured” means the accepted layers below, not every feature offered by every
-vendor. Protocol direction is explicit: OP/IdP issues identity; RP/SP consumes it.
+“Logout all” means all QoAuth sessions/grants for the selected user. Other
+applications' own cookies remain their responsibility; this release must not
+promise instantaneous logout of every RP. See [architecture](architecture.md).
 
-| Layer | Included target | First milestone | Excluded or deferred |
-|---|---|---|---|
-| Core identity | Invite/disable local users; verified email; password change/recovery; TOTP; recovery codes; administrator step-up | M2 | Open public signup, SMS login, security questions |
-| OIDC/OAuth core | Discovery, JWKS, authorization code with S256 PKCE, ID Token, UserInfo, client credentials, introspection, revocation | M2 | Implicit, password grant, wildcard redirect URIs |
-| Session lifecycle | Tenant SSO, session inventory, local and all-session logout, RP-initiated logout, refresh families, back-channel logout | M2 | Guaranteed logout of nonparticipating applications |
-| Tenant/product model | One tenant initially on a tenant-scoped schema; organizations, invitations, group/app-role mapping, delegated admin | M2/M3 | Shared identities or automatic SSO across independent issuers |
-| Modern authentication | WebAuthn/passkeys; enrollment/removal/step-up; recovery resistant to downgrades | M3 | Claiming every passkey meets every assurance level |
-| Federation | Upstream OIDC first, then SAML SP; explicit linking and claim mapping | M3/M4 | Automatic email-based linking |
-| Enterprise interoperability | SAML IdP, SCIM 2.0 inbound users/groups, LDAP/AD read/auth federation, optional outbound provisioning | M4 | General-purpose LDAP server; unlimited connector parity |
-| Authorization and consent | Audience/scope allowlists, client assignment, tenant app roles, versioned consent/re-consent | M2/M3 | Embedded universal policy engine at initial release |
-| Administration | Responsive admin UI and versioned API; user/client/key/session/audit management; accessible login screens | M2 onward | Arbitrary plugin execution or user-supplied login JavaScript |
-| Operations | Structured redacted logs, audit export, metrics, rate limits, backups, upgrades, rotation, HA verification | M2/M5 | Unmeasured capacity/availability guarantees |
-| Advanced protocols | Device authorization for CLI, PAR, private_key_jwt, optional JWT access tokens and sender constraints | M4+ separately prioritized | FAPI certification, DPoP/mTLS/token exchange claimed without profile tests |
-| Ecosystem | Go RP example, browser/BFF guidance, generic OIDC instructions, admin OpenAPI | M2/M3 | Maintaining bespoke SDKs for every language |
+## Can be added later, only when useful
 
-## Administrative model
+Passkeys/WebAuthn; a small number of upstream OIDC/social providers; client
+credentials for a concrete machine-client need; back-channel logout for participating
+apps; an independent browser-client example; device flow for CLI; better audit
+export. Each is optional, with its own implementation and security tests. The
+initial release remains complete without them. No speculative framework is needed
+to make these possible.
 
-Separate deployment operator, tenant owner, tenant administrator, application
-administrator, auditor, and end user. Tenant owners do not inherit deployment
-operator powers. Application administrators manage assigned clients but cannot
-grant themselves arbitrary tenant roles. Auditor is read-only and redacted.
-Every role-changing action requires an existing authorized principal and an audit
-event; deleting the last usable owner is rejected. Service accounts have explicit
-scopes and cannot use an interactive user's session as their own credential.
+## Explicitly outside the current commitment
 
-UI sections: Overview; Users; Organizations and Groups; Applications; Identity
-Providers; Authentication and Recovery; Sessions; Audit; Keys; Settings. Hide or
-label unimplemented sections; a placeholder page must not imply a working feature.
-Login/account screens must support keyboard use, clear errors without enumeration,
-password managers, reduced motion, and English/Chinese localization-ready strings.
+Complex organizations, B2B tenancy, multi-tenant isolation as a product, approval
+workflows, SCIM, LDAP/AD, SAML enterprise federation, generic ABAC/ReBAC, custom
+plugin execution, FAPI certification, Redis, PostgreSQL as a prerequisite,
+microservices, message queues, Kubernetes, HA and multi-region deployment.
+Enterprise competitors remain research references only. These are not later
+mandatory milestones disguised as a backlog.
 
-## Proposed limits, pending measurement
+## Proposed defaults to verify
 
-Start with a single-region service and a reference test dataset of 10,000 users,
-20 tenants and 100 clients. This is a test fixture, not a supported-capacity claim.
-Initial service objectives for the future benchmark: 50 non-password auth requests
-per second for 30 minutes, p95 below 300 ms at the server, error rate below 0.1%,
-excluding deliberate rejections. Measure password hashing separately with bounded
-concurrency on a recorded 4-vCPU/8-GiB reference host; tune before promising latency.
+Authorization code: one use, 60 seconds. Access token: 5 minutes. Browser session:
+8-hour idle / 24-hour absolute lifetime. Refresh family: 7-day idle / 30-day
+absolute lifetime, bounded by grant and account status; ordinary interactive
+logout also revokes the associated family. Administrative sensitive changes
+require reauthentication within 5 minutes. These are policy proposals, not
+requirements imposed by the standards.
 
-Proposed defaults: 60-second one-use authorization codes; 5-minute access tokens;
-8-hour idle and 24-hour absolute browser sessions; refresh families with 7-day idle
-and 30-day absolute limits. Administrative sessions: 15-minute idle, 8-hour absolute,
-and reauthentication within 5 minutes for keys/roles/recovery changes. Values are
-product policy candidates, not standard requirements. Changing them needs documented
-risk review and boundary tests, not silent configuration drift.
+Use a modest reference fixture of 100 users and 10 applications. Measure 10
+non-password protocol requests/second for 10 minutes on a recorded 2-vCPU/2-GiB
+machine, with no server errors or unbounded memory growth; record p95 rather than
+invent a capacity guarantee. Benchmark password hashing independently with a
+bounded concurrency budget. A larger supported scale requires actual evidence.
 
-## Not in the initial product promise
-
-No office workflows, HR/payroll, device management, full identity governance/PAM,
-fraud scoring, government identity proofing, multi-region active-active service,
-or formal FIPS/AAL/FAPI certification. An application portal and enterprise lifecycle
-connectors can grow later; they do not displace correctness of the identity core.
+Current next action: review this lightweight scope and the short roadmap.
+No business code, service, real credential or external binding is authorized yet.
