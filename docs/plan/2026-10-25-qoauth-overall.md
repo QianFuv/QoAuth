@@ -493,7 +493,7 @@ Baseline is clean main `15e2f421c522113d4529e3872710fda512174d7c`.
 | Task | Bounded scope | Intended commit | State |
 |---|---|---|---|
 | N1 | This accepted execution record | docs(plan): record M2.2 maintenance approval | Done; identifiable by exact message |
-| N2 | Private installation lock, shared CLI lifecycle, isolated process tests | feat(storage): serialize local installation operations | In progress |
+| N2 | Private installation lock, shared CLI lifecycle, isolated process tests | feat(storage): serialize local installation operations | Done; identifiable by exact message |
 | N3 | Persistent signing rotation and OP verification window, restart/interruption tests | feat(keys): rotate signing keys with bounded overlap | Pending |
 | N4 | Consistent backup, new-directory restore, restricted recovery and signed-token quarantine | feat(maintenance): add isolated backup and restore | Pending |
 | N5 | Bounded dependency-aware state and activity cleanup, failure regressions | feat(storage): bound maintenance without losing replay evidence | Pending |
@@ -507,3 +507,9 @@ cleanup retention/commit failure. Run scoped Go tests/vet/race, source/binary sc
 both target builds and Compose configuration validation. Native Linux/image runs
 remain unexecuted without an already usable permitted runtime. A4 permits necessary
 in-scope corrections and their logical commits; record each correction before use.
+
+N2 evidence: 12 targeted identity/CLI tests passed on Windows. A permanent private
+lock file uses nonblocking OS locking; serving and all local mutations share it.
+Same-process/cross-process contention rejects a second owner; process exit releases
+the lock without unlinking the file. Tests use only temporary installations. Unix
+locking is included in the later cross-build; no Linux runtime pass is implied.

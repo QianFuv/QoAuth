@@ -27,6 +27,16 @@ func TestCommandInitializationRecoveryAndNewProcess(t *testing.T) {
 	if err = run([]string{"init", "--data-dir", directory, "--username", "attacker"}, strings.NewReader(password), &output); err == nil {
 		t.Fatal("ownership reopened")
 	}
+	lock, err := identity.LockDirectory(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, command := range []string{"serve", "recover-owner", "init"} {
+		if err = run([]string{command, "--data-dir", directory, "--confirm", "--username", "owner"}, strings.NewReader(password), &output); err == nil || !strings.Contains(err.Error(), "busy") {
+			t.Fatal("command bypassed installation lock", command, err)
+		}
+	}
+	lock.Close()
 	if err = run([]string{"recover-owner", "--data-dir", directory}, strings.NewReader(password), &output); err == nil {
 		t.Fatal("recovery did not require explicit confirmation")
 	}

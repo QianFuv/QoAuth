@@ -59,6 +59,11 @@ func run(arguments []string, input io.Reader, output io.Writer) error {
 		return errors.New("expected init, recover-owner or serve")
 	}
 	ctx := context.Background()
+	lock, err := identity.LockDirectory(*directory)
+	if err != nil {
+		return err
+	}
+	defer lock.Close()
 	if command == "init" {
 		if !regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$`).MatchString(*username) {
 			return errors.New("valid --username required")
