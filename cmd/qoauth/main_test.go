@@ -31,7 +31,7 @@ func TestCommandInitializationRecoveryAndNewProcess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, command := range []string{"serve", "recover-owner", "init"} {
+	for _, command := range []string{"serve", "recover-owner", "init", "cleanup"} {
 		if err = run([]string{command, "--data-dir", directory, "--confirm", "--username", "owner"}, strings.NewReader(password), &output); err == nil || !strings.Contains(err.Error(), "busy") {
 			t.Fatal("command bypassed installation lock", command, err)
 		}

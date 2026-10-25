@@ -56,6 +56,15 @@ func TestCleanupPreservesExpiredSessionAndReplayFamily(t *testing.T) {
 	if _, err = storage.Rotate(t.Context(), first.Refresh, "rp", nil); err != ErrReplay {
 		t.Fatal("cleanup lost unexpired consumed ancestor", err)
 	}
+	if _, err = storage.Cleanup(t.Context(), 64); err != nil {
+		t.Fatal(err)
+	}
+	storage.Close()
+	storage, err = Open(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer storage.Close()
 	if _, err = storage.Lookup(t.Context(), second.Access); err == nil {
 		t.Fatal("retained replay did not revoke family")
 	}

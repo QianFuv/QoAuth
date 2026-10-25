@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"context"
+	"database/sql"
+	"encoding/json"
 	"net"
 	"net/http"
 	"os"
@@ -13,6 +15,44 @@ import (
 
 	"qoauth/internal/identity"
 )
+
+func TestCleanupCommandBoundsAndCountOnlyOutput(t *testing.T) {
+	directory := filepath.Join(t.TempDir(), "state")
+	var output bytes.Buffer
+	if err := run([]string{"init", "--data-dir", directory, "--username", "owner"}, strings.NewReader("synthetic cleanup credential"), &output); err != nil {
+		t.Fatal(err)
+	}
+	database, err := sql.Open("sqlite", filepath.Join(directory, "qoauth.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = database.Exec(`WITH RECURSIVE counter(n) AS (VALUES(1) UNION ALL SELECT n+1 FROM counter WHERE n<300) INSERT INTO activity(action,subject,recorded_at) SELECT 'old','synthetic-account-canary',0 FROM counter`)
+	database.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, bound := range []string{"0", "257"} {
+		output.Reset()
+		if err = run([]string{"cleanup", "--data-dir", directory, "--batch-size", bound}, strings.NewReader(""), &output); err == nil || output.Len() != 0 {
+			t.Fatal("invalid cleanup bound succeeded or exposed output", err)
+		}
+	}
+	for _, limit := range []int64{128, 128, 44} {
+		output.Reset()
+		if err = run([]string{"cleanup", "--data-dir", directory}, strings.NewReader(""), &output); err != nil {
+			t.Fatal(err)
+		}
+		var counts map[string]int64
+		if err = json.Unmarshal(output.Bytes(), &counts); err != nil || len(counts) != 7 || counts["Activity"] != limit {
+			t.Fatal("default batch or count-only JSON violated", output.String(), err)
+		}
+		for _, name := range []string{"Tokens", "Grants", "Requests", "Logins", "Sessions", "RecoveryCodes"} {
+			if count, exists := counts[name]; !exists || count != 0 {
+				t.Fatal("unexpected count fields", counts)
+			}
+		}
+	}
+}
 
 func TestMaintenanceCommandsAndIncompleteDirectoryGuard(t *testing.T) {
 	root := t.TempDir()
@@ -53,7 +93,7 @@ func TestMaintenanceCommandsAndIncompleteDirectoryGuard(t *testing.T) {
 	if err = identity.WritePrivate(filepath.Join(source, "operation.incomplete"), strings.NewReader("partial")); err != nil {
 		t.Fatal(err)
 	}
-	for _, command := range []string{"init", "serve", "recover-owner", "rotate-signing", "backup"} {
+	for _, command := range []string{"init", "serve", "recover-owner", "rotate-signing", "backup", "cleanup"} {
 		if err = run([]string{command, "--data-dir", source, "--username", "owner", "--confirm"}, strings.NewReader(password), &output); err == nil || !strings.Contains(err.Error(), "incomplete") {
 			t.Fatal("command bypassed incomplete publication", command, err)
 		}

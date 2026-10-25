@@ -600,3 +600,10 @@ private synced keys.staging.json, then atomically publishes keys.next.json befor
 any DB update. Only explicit rotation retry reclaims a validated private unpublished
 staging file. A completed candidate retains the same key/deadline; malformed published
 candidates still fail closed. This does not claim physical power-loss validation.
+
+N5 coverage follow-up under A4: `test(maintenance): cover cleanup after revocation`
+adds cleanup after replay revocation, another reopen and retained-lineage/successor
+denial assertions. CLI coverage now includes cleanup in lock/incomplete guards,
+invalid batch limits, default 128-row progress and strictly count-only JSON. The
+independent cleanup review found no P0/P1/P2; these were coverage recommendations,
+not claimed runtime defects.
