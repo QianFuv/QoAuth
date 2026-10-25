@@ -243,8 +243,6 @@ html body .semi-tag { font-weight: 500; }
 .kind-picker .semi-radio-pureCard { width: 100%; }
 .kind-picker .semi-radio-addon { font-weight: 600; }
 
-/* Motion: one-shot entrances and short feedback only. */
-@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 /* Touch targets: at least 44px hit areas on phones and coarse pointers. */
 @media (max-width: 767px), (pointer: coarse) {
   html body .semi-button, html body .semi-typography-action-copy, html body label.semi-radio-buttonRadioGroup, .brand, .text-link, .auth-footnote a { position: relative; }
@@ -260,6 +258,8 @@ html body .semi-tag { font-weight: 500; }
 
 @keyframes fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .enter { animation: fade-in .32s var(--ease-out) both; }
+/* Motion: one-shot entrances and short feedback only. */
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 .console-page > .enter:nth-child(2) { animation-delay: .04s; }
 .console-page > .enter:nth-child(3) { animation-delay: .08s; }
 .console-page > .enter:nth-child(n+4) { animation-delay: .12s; }
