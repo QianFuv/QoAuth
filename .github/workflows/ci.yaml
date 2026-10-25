@@ -81,14 +81,65 @@ jobs:
       web_artifact_id: ${{ needs.frontend.outputs.web_artifact_id }}
 
   release-publish:
-    name: Publish
+    name: Publish verified packages
     needs: detect-changes
     if: needs.detect-changes.outputs.mode == 'publish'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    concurrency:
+      group: version-release-${{ needs.detect-changes.outputs.version }}
+      cancel-in-progress: false
     permissions:
       contents: write
       actions: read
-    uses: ./.github/workflows/release.yaml
-    with:
-      version: ${{ needs.detect-changes.outputs.version }}
-      publish: true
-      source_run: ${{ needs.detect-changes.outputs.source_run }}
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.26.10
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.22.1
+      - name: Require complete same-source CI and immutable artifact IDs
+        id: source
+        env:
+          SOURCE_RUN: ${{ needs.detect-changes.outputs.source_run }}
+        run: node scripts/release.mjs prepublish "$SOURCE_RUN"
+      - name: Download exact accepted archives
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ steps.source.outputs.accepted_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ needs.detect-changes.outputs.source_run }}
+          path: .cache/accepted-release
+          merge-multiple: true
+      - name: Download exact Windows acceptance
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ steps.source.outputs.windows_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ needs.detect-changes.outputs.source_run }}
+          path: .cache/windows-proof
+          merge-multiple: true
+      - name: Publish accepted bytes without rebuilding or overwriting
+        id: publication
+        run: node scripts/release.mjs publish .cache/accepted-release .cache/windows-proof/windows-acceptance.json
+      - name: Download and verify the public release
+        id: public
+        run: node scripts/release.mjs verify-published .cache/public-download
+      - name: Report publish summary
+        if: always()
+        env:
+          CI_STAGE: publish
+          CI_PLATFORM: linux/amd64,windows/amd64
+          CI_STATUS: ${{ job.status }}
+          CI_CHECKS: ${{ toJSON(steps) }}
+        run: node scripts/ci-report.mjs

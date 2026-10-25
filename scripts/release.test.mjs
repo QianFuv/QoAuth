@@ -91,3 +91,16 @@ test("already-exited task children stop without waiting for a past exit event", 
   await new Promise((resolve, reject) => { child.once("exit", resolve); child.once("error", reject); });
   await stopProcess(child);
 });
+
+test("read-only reusable build acceptance cannot request publication permissions", () => {
+  const ci = fs.readFileSync(new URL("../.github/workflows/ci.yaml", import.meta.url), "utf8").replaceAll("\r\n", "\n");
+  const release = fs.readFileSync(new URL("../.github/workflows/release.yaml", import.meta.url), "utf8");
+  assert(!/contents:\s*write/.test(release), "A read-only caller cannot invoke a callee containing a write-permission job, even if that job is conditional");
+  const jobs = [...ci.matchAll(/^  ([a-z][\w-]*):\n([\s\S]*?)(?=^  [a-z][\w-]*:\n|$(?![\s\S]))/gm)];
+  assert.deepEqual(jobs.filter(([, , body]) => /contents:\s*write/.test(body)).map(([, name]) => name), ["release-publish"]);
+  const publication = jobs.find(([, name]) => name === "release-publish")?.[2];
+  assert(publication?.includes("mode == 'publish'"));
+  assert(publication?.includes("node scripts/release.mjs prepublish"));
+  assert(publication?.includes("node scripts/release.mjs verify-published"));
+  assert(ci.includes("uses: ./.github/workflows/release.yaml"));
+});
