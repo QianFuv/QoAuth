@@ -14,7 +14,7 @@ func authorizationFixture(t *testing.T) (*Store, Session, LoginRequest) {
 	if err := storage.Assign(t.Context(), admin.UserID, "rp", admin.Digest, true); err != nil {
 		t.Fatal(err)
 	}
-	login := LoginRequest{ID: NewHandle(), ClientID: "rp", Browser: admin.Digest, Payload: []byte(`{}`), Expires: time.Now().Add(time.Minute).Unix()}
+	login := LoginRequest{ID: NewHandle(), ClientID: "rp", ClientGeneration: 1, Browser: admin.Digest, Payload: []byte(`{}`), Expires: time.Now().Add(time.Minute).Unix()}
 	if err := storage.CreateLogin(t.Context(), login); err != nil {
 		t.Fatal(err)
 	}
@@ -107,5 +107,46 @@ func TestRecoveryCommitFailureRestoresAllAuthenticationState(t *testing.T) {
 	}
 	if _, err := storage.RecoverFactor(t.Context(), session, codes[0]); err != nil {
 		t.Fatal("recovery retry failed", err)
+	}
+}
+
+func TestClientReplacementRejectsAuthorizationAlreadyBeingConstructed(t *testing.T) {
+	storage, session, _ := authorizationFixture(t)
+	observed, err := storage.Application(t.Context(), "rp")
+	if err != nil {
+		t.Fatal(err)
+	}
+	stale := LoginRequest{ID: NewHandle(), ClientID: observed.ID, ClientGeneration: observed.Generation, Browser: session.Digest, Payload: []byte(`{"old_permissions":true}`), Expires: time.Now().Add(time.Minute).Unix()}
+	if err = storage.DisableApplication(t.Context(), observed.ID, session.Digest); err != nil {
+		t.Fatal(err)
+	}
+	if err = storage.ReplaceDisabledApplication(t.Context(), Application{ID: "rp", Name: "Reviewed", Public: true, Scopes: []string{"openid"}}, session.Digest); err != nil {
+		t.Fatal(err)
+	}
+	if err = storage.Assign(t.Context(), session.UserID, "rp", session.Digest, true); err != nil {
+		t.Fatal(err)
+	}
+	if err = storage.CreateLogin(t.Context(), stale); err == nil {
+		t.Fatal("in-flight old client configuration admitted after replacement")
+	}
+	if err = storage.CompleteLogin(t.Context(), stale, session, stale.Payload, []byte(`{}`), true); err == nil {
+		t.Fatal("stale client request became issuable")
+	}
+	if _, err = storage.RequestByID(t.Context(), stale.ID); err == nil {
+		t.Fatal("stale authorization survived replacement")
+	}
+	current, err := storage.Application(t.Context(), "rp")
+	if err != nil || current.Generation <= observed.Generation {
+		t.Fatal("replacement did not advance client generation", err)
+	}
+	fresh := stale
+	fresh.ID = NewHandle()
+	fresh.ClientGeneration = current.Generation
+	fresh.Payload = []byte(`{"scope":"openid"}`)
+	if err = storage.CreateLogin(t.Context(), fresh); err != nil {
+		t.Fatal("current client configuration rejected", err)
+	}
+	if err = storage.CompleteLogin(t.Context(), fresh, session, fresh.Payload, []byte(`{"Scopes":["openid"]}`), true); err != nil {
+		t.Fatal("current client could not complete", err)
 	}
 }

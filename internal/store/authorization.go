@@ -11,6 +11,7 @@ import (
 // LoginRequest keeps validated authorization input unbound until a real login.
 type LoginRequest struct {
 	ID, ClientID, Browser string
+	ClientGeneration      int64
 	Payload               []byte
 	Expires               int64
 	Completed             bool
@@ -22,7 +23,7 @@ func (storage *Store) CreateLogin(ctx context.Context, request LoginRequest) err
 		if err := pruneAnonymous(ctx, tx); err != nil {
 			return err
 		}
-		result, err := tx.ExecContext(ctx, `INSERT INTO login_requests(id,client_id,browser_digest,payload,expires) SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM browser_sessions WHERE digest=? AND revoked=0 AND expires>?) AND (SELECT count(*) FROM login_requests WHERE browser_digest=?)<16 AND (SELECT count(*) FROM login_requests)<2048`, request.ID, request.ClientID, request.Browser, request.Payload, request.Expires, request.Browser, time.Now().Unix(), request.Browser)
+		result, err := tx.ExecContext(ctx, `INSERT INTO login_requests(id,client_id,browser_digest,payload,expires) SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM clients WHERE id=? AND enabled=1 AND generation=?) AND EXISTS(SELECT 1 FROM browser_sessions WHERE digest=? AND revoked=0 AND expires>?) AND (SELECT count(*) FROM login_requests WHERE browser_digest=?)<16 AND (SELECT count(*) FROM login_requests)<2048`, request.ID, request.ClientID, request.Browser, request.Payload, request.Expires, request.ClientID, request.ClientGeneration, request.Browser, time.Now().Unix(), request.Browser)
 		if err != nil {
 			return err
 		}

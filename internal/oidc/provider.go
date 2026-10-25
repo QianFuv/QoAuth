@@ -96,7 +96,7 @@ func (s *Server) CreateAuthRequest(ctx context.Context, request *protocol.AuthRe
 		return nil, err
 	}
 	id := store.NewHandle()
-	err = s.database.CreateLogin(ctx, store.LoginRequest{ID: id, ClientID: app.ID, Browser: session.Digest, Payload: payload, Expires: time.Now().Add(5 * time.Minute).Unix()})
+	err = s.database.CreateLogin(ctx, store.LoginRequest{ID: id, ClientID: app.ID, ClientGeneration: app.Generation, Browser: session.Digest, Payload: payload, Expires: time.Now().Add(5 * time.Minute).Unix()})
 	return &authRequest{tokenData: data, id: id}, err
 }
 func requestFromRecord(record store.Request, err error) (op.AuthRequest, error) {

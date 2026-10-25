@@ -417,6 +417,7 @@ func (storage *Store) RecoverFactor(ctx context.Context, session Session, code s
 
 // Application is the small registration/authorization model, not an RBAC engine.
 type Application struct {
+	Generation      int64    `json:"-"`
 	ID              string   `json:"id"`
 	Name            string   `json:"name"`
 	Redirects       []string `json:"redirects"`
@@ -431,7 +432,7 @@ type Application struct {
 func (storage *Store) Application(ctx context.Context, id string) (Application, error) {
 	var result Application
 	var payload []byte
-	err := storage.db.QueryRowContext(ctx, `SELECT a.payload FROM client_config a JOIN clients c ON c.id=a.client_id WHERE client_id=? AND c.enabled=1`, id).Scan(&payload)
+	err := storage.db.QueryRowContext(ctx, `SELECT a.payload,c.generation FROM client_config a JOIN clients c ON c.id=a.client_id WHERE client_id=? AND c.enabled=1`, id).Scan(&payload, &result.Generation)
 	if err != nil {
 		return result, ErrInvalid
 	}
@@ -508,7 +509,7 @@ func (storage *Store) saveApplication(ctx context.Context, app Application, acto
 			if err = validateResources(ctx, tx, app); err != nil {
 				return err
 			}
-			result, err := tx.ExecContext(ctx, `UPDATE clients SET enabled=1 WHERE id=? AND enabled=0`, app.ID)
+			result, err := tx.ExecContext(ctx, `UPDATE clients SET enabled=1,generation=generation+1 WHERE id=? AND enabled=0`, app.ID)
 			if err = one(result, err); err != nil {
 				return err
 			}

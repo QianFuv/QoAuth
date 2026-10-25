@@ -582,3 +582,12 @@ only snapshot schema filtering, its rehashed malicious-trigger regression and th
 record. Independent review found SQL LIKE treated the underscore as a wildcard.
 The new test first failed because a `sqliteXrestore` trigger bypassed validation;
 literal-prefix GLOB matching now rejects it before destination creation.
+
+N4 correction under A4: `fix(oidc): fence requests across client replacement`
+covers a clients.generation migration, application lookup/replacement, transactional
+login admission, OP handoff and affected regression fixtures. The deterministic
+old-config-read -> replacement/reassignment -> insertion test failed before the
+fix. Admission now compares the observed generation inside its insertion transaction;
+replacement still deletes existing requests and invalidates codes/grants. A fresh
+request using the new generation succeeds. No policy framework or infrastructure
+is introduced; this is a local concurrency fence for existing client replacement.

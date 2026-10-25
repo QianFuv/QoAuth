@@ -60,7 +60,7 @@ func TestProductionInvalidationReachesCodesAndFamilies(t *testing.T) {
 	}
 	session := passwordSession(t, storage, account)
 	prepare := func() string {
-		request := LoginRequest{ID: NewHandle(), ClientID: "rp", Browser: session.Digest, Payload: []byte(`{}`), Expires: time.Now().Add(time.Minute).Unix()}
+		request := LoginRequest{ID: NewHandle(), ClientID: "rp", ClientGeneration: 1, Browser: session.Digest, Payload: []byte(`{}`), Expires: time.Now().Add(time.Minute).Unix()}
 		if err := storage.CreateLogin(t.Context(), request); err != nil {
 			t.Fatal(err)
 		}
