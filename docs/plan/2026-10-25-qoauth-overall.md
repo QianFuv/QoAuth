@@ -934,8 +934,8 @@ need not be started. No sudo, installation or host configuration change occurred
 
 | Task | Bounded scope / checks | Intended commit | State |
 |---|---|---|---|
-| P0 | Record A6, actual resource/runtime inspection and this checklist | docs(plan): record authorized platform validation | Done; this record's commit |
-| P1 | Execute Linux-native tests and final binary smoke on private ext4 temporary state; only necessary portability-test corrections | test(platform): validate isolated Linux execution | Pending |
+| P0 | Record A6, actual resource/runtime inspection and this checklist | docs(plan): record authorized platform validation | Committed 9094fa6 |
+| P1 | Execute Linux-native tests and final binary smoke on private ext4 temporary state; only necessary portability-test corrections | test(platform): validate isolated Linux execution | Done; this record's commit |
 | P2 | Build existing image with CPU/memory limits; non-root/read-only/loopback TLS synthetic lifecycle, restart and maintenance; necessary recipe fixes only | test(container): verify isolated image lifecycle | Pending |
 | P3 | Actual image provenance/notices/SBOM and updated finite evidence; retain all unexecuted limits | docs(validation): record Linux and container evidence | Pending |
 
@@ -943,3 +943,18 @@ No additional product feature is authorized. Existing Windows race/browser/secur
 evidence is reusable for unchanged inputs; native checks must actually run before
 changing platform claims. Test resources get task-specific names and only those
 resources may be removed. Never prune or terminate unrelated host/container/WSL work.
+
+P1 executed all eight cross-compiled CGO=0 Linux test binaries sequentially on
+Ubuntu WSL2 kernel 6.18.54.1 as existing uid 1000, with GOMAXPROCS=2/nice=10 and
+private native /tmp state. Results: 130 tests/subtests passed, six helper/opt-in
+skips, zero failures. Unix ownership/mode, hard-link, flock/process-exit, SQLite,
+OP/RP and maintenance tests needed no portability changes. The actual final Linux
+binary SHA 5da3b258fab86e6328ee40c8c89e788cd64c027968ae818e844cae13d3a151d3
+passed private modes, UI/discovery/readiness, real CLI SIGTERM, restart/JWKS,
+locked backup, rotation/AES continuity, new-directory restore/recovery/quarantine,
+cleanup bounds and redacted output. scripts/verify-linux.py reproduces the run;
+.cache/platform-a6/linux-results-r1/report.json and package logs hold evidence.
+All temporary state/processes were removed. This is native Linux execution on WSL,
+not Linux race detection, physical power-loss or a real foreign-owned-inode test.
+The earlier Windows race evidence remains separate. Host CPU afterward was 2%
+and free RAM about 9.4 GiB; no research task was stopped or reconfigured.
