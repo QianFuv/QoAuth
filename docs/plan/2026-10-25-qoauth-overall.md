@@ -3,7 +3,7 @@
 Protocol Version: 2026-09-05
 Protocol Revision: autonomous-execution-git-flow-v2
 
-Revision 3, 2026-10-25. Status: M1 implemented; evidence ready for parent acceptance.
+Revision 4, 2026-10-25. Status: M1 accepted; M2.1 authorized and in progress.
 Parent internal review accepted the
 lightweight direction and explicitly authorized M1 local feasibility work (A2).
 There is no outstanding end-user approval gate for this scope. This is the single
@@ -183,7 +183,7 @@ technical blocker; the parent owns the next implementation decision.
 
 ## Proposed next slice for parent decision: M2.1 local authentication core
 
-This is a concrete proposal, not a claim of new implementation authorization.
+Parent accepted this concrete proposal in A3 below.
 Keep the same process/database/UI stack and existing single checklist.
 
 1. Add production configuration and a host-invoked initialization command. A fresh
@@ -232,3 +232,29 @@ reverse-proxy/TLS/network changes, starting a missing Docker/system service, rea
 OAuth/SMTP bindings or deployment are separate concrete actions requiring explicit
 authorization; none is needed to write/test the proposed code. Parent can approve
 or narrow this slice directly without transferring internal plan review to the user.
+
+## M2.1 authorization and execution
+
+A3: The parent message beginning "我已审阅 M1 最终证据和 M2.1 三部分计划，批准在原授权范围内实施 M2.1"
+explicitly accepted M1 and authorized this implementation, tests and logical main
+commits. Verified baseline is clean main at
+`0a77f7bfec48baf65e9e498f8995109652dbc715`; the older 049400d handoff is historical,
+not a rollback target. This authorization covers code for persistent keys/init,
+but execution only with temporary isolated synthetic credentials/databases.
+
+| Task | Bounded scope | Commit | State |
+|---|---|---|---|
+| U1 | This acceptance/execution record | docs(plan): record M2.1 implementation approval | Done; commit follows |
+| U2 | Password/TOTP/key primitives, SQLite identity/session/client transitions, dependency locks and tests | feat(identity): persist credentials and enforce atomic session security | Pending |
+| U3 | Production config/CLI/OP, account and management HTTP APIs, Go RP example and E2E/failure tests | feat(auth): connect local accounts to standard OIDC sessions | Pending |
+| U4 | Embedded Semi login/MFA/account/admin screens and browser verification | feat(ui): add local authentication and management screens | Pending |
+| U5 | Final security/build evidence, deployment limits and next bounded scope | docs(validation): record M2.1 authentication evidence | Pending |
+
+Mandatory checks extend V1-V6: secure cookie attributes and origin/CSRF binding;
+TOTP window replay and recovery-code contention; disable/password/factor recovery
+invalidate sessions, pending codes and grants; exact redirects and authorized
+audiences/scopes; persisted signing keys survive restart; credential canaries do
+not appear in logs. Run actual production handlers with standard Go RP E2E,
+negative tests, race, dependency scans and browser verification. Native Linux and
+container execution remain separately unverified unless a permitted runtime exists.
+No additional approval gate or enterprise framework is introduced.
