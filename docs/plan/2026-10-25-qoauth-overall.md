@@ -693,8 +693,8 @@ This supersedes the prior proposal wait. No further internal-plan approval is ne
 | C2 | Existing administrator reset API/UI with fresh MFA and CSRF, preserved factor/invalidation | feat(admin): expose controlled password reset | Committed 6f4499e |
 | C3 | Disabled-client list/safe settings and explicit review-prefill, no restored grants or secrets | feat(admin): review disabled application settings | Committed 54e34a5 |
 | C4 | Minimal bounded readiness with generic public status and store/key/install checks | feat(health): expose bounded readiness checks | Committed b240fc3 |
-| C5 | Second pinned RP implementation and focused local protocol checks | test(oidc): verify a second standard relying party | Done; commit follows |
-| C6 | Existing phase-version restore/upgrade drill, bounded load, browser/accessibility evidence | test(validation): exercise release closure scenarios | Pending |
+| C5 | Second pinned RP implementation and focused local protocol checks | test(oidc): verify a second standard relying party | Committed 9c4855e |
+| C6 | Existing phase-version restore/upgrade drill, bounded load, browser/accessibility evidence | test(validation): exercise release closure scenarios | Done; commit follows |
 | C7 | Versioned local binaries, graph/NOTICE/license/SBOM inventory and packaging script | build(distribution): assemble versioned local artifacts | Pending |
 | C8 | Actual evidence, runbook and finite remaining gates; no next feature expansion | docs(validation): close bounded delivery checks | Pending |
 
@@ -759,3 +759,27 @@ splitting could expand a literal URL into additional redirects. Browser executio
 confirmed correct review/cancel/remount, no mutation during review, replacement action,
 and exact comma-containing callback/logout values after submit -> disable -> reread.
 TypeScript/Vite build passed. The correction does not widen application permissions.
+
+C6: 600 seconds/6,000 requests at 10 requests per second, one in-flight request,
+100 synthetic users/10 applications: zero failures, p50 1.026 ms, p95 2.855 ms,
+max 16.363 ms. Mix is readiness/discovery/authenticated introspection with periodic
+refresh, not password capacity. database_bytes records only the main file, excluding WAL.
+Browser owner MFA, corrected review/cancel/lossless URL round trip, Unicode rejection,
+admin reset/input clearing, new-password coreos login/UserInfo/confirmed logout passed.
+Basic labels/landmarks/keyboard focus and 390px layout passed, not a WCAG audit.
+Chrome extensions modify colors and produce unrelated CSP errors; none were reconfigured.
+
+M2.2 binary SHA 6418e7e7 -> current verification binary d34dadbe (production Go code
+through 9c4855e) passed enrollment/snapshot/new-directory restore, unchanged-source,
+old recovery/session invalidation, actual ten-minute quarantine and recovered-owner
+MFA restriction. Both schemas are 7; no arbitrary old-schema migration is claimed.
+The first process exited 1 only during temporary cleanup: Python's SQLite context
+manager did not close its handle. Explicit closing and post-cleanup result publication
+correct that script; a focused Windows connection/open/read/close/delete check passed,
+and the exact task-owned leftover was removed. Flow assertions above are reused; a
+full rerun is being collected as additional final evidence. No product recovery bypass.
+
+Final Go race suite currently passes 135 tests/subtests in eight packages with six
+opt-in/helper skips; go vet passed. Source govulncheck found zero affected symbols/imported
+packages, with the previously documented unused OpenPGP module advisory. npm audit zero.
+Evidence: .cache/final-{load,race,browser-validation,upgrade}.json and final-admin.png.
