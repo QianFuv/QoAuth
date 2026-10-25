@@ -103,6 +103,7 @@ html body .semi-tag { font-weight: 500; }
 .status-view .semi-empty-image svg { width: 160px; height: 160px; }
 .status-view-action { margin-top: 20px; }
 .notice-slot { margin-bottom: 20px; }
+html body .semi-banner .semi-banner-content-wrapper .semi-banner-content-body { display: block; }
 .notice-slot .semi-banner, .console-page > .semi-banner { border-radius: var(--radius-control); }
 .banner-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin-top: 12px; }
 
@@ -113,6 +114,7 @@ html body .semi-tag { font-weight: 500; }
 .auth-aside::after { content: ""; position: absolute; width: 520px; height: 520px; right: -200px; bottom: -220px; background: radial-gradient(circle, rgba(36,87,245,.45), transparent 65%); pointer-events: none; }
 .auth-aside > * { position: relative; z-index: 1; }
 .auth-aside-title { margin: 0 0 32px; max-width: 420px; font-size: clamp(28px, 2.6vw, 38px); line-height: 1.15; letter-spacing: 0; font-weight: 700; }
+.auth-aside-title { word-break: keep-all; overflow-wrap: anywhere; }
 .auth-aside-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; max-width: 400px; }
 .auth-aside-list li { display: flex; gap: 14px; align-items: flex-start; color: rgba(255,255,255,.78); font-size: 15px; line-height: 1.5; }
 .auth-aside-list svg { flex: none; margin-top: 2px; color: #8eaaff; }
@@ -222,6 +224,7 @@ html body .semi-tag { font-weight: 500; }
 .stack-item > span, .stack-item > code { color: var(--muted); font-size: 13px; }
 .stack-item .row-actions { justify-content: flex-start; margin-left: -12px; }
 .stack-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.stack-item > .semi-tag { justify-self: start; }
 .mini-list { list-style: none; margin: 0; padding: 0; }
 .mini-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; }
 .mini-list li + li { border-top: 1px solid var(--line); }
@@ -230,6 +233,8 @@ html body .semi-tag { font-weight: 500; }
 .mini-list code { font-size: 12px; color: var(--subtle); overflow-wrap: anywhere; }
 .activity-timeline { padding-top: 4px; }
 .activity-action { font-weight: 600; }
+.action-label { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
+.action-code { font-size: 12px; color: var(--muted); white-space: nowrap; }
 .subject { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; min-width: 0; vertical-align: middle; }
 .subject-name { font-weight: 550; color: var(--ink-2); overflow-wrap: anywhere; }
 .subject-id, .subject-id code { font-size: 12px; color: var(--muted); white-space: nowrap; }

@@ -42,13 +42,13 @@ export function ConsoleShell({ session, selectedKey, isBusy, onSignOut, children
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   useEffect(() => { if (!isCompact) setIsDrawerOpen(false); }, [isCompact]);
   const items = [
-    { itemKey: "account", text: "My account", icon: <IconUser /> },
+    { itemKey: "account", text: "我的账户", icon: <IconUser /> },
     ...(session.account.admin ? [
-      { itemKey: "admin-overview", text: "Overview", icon: <IconGridView /> },
-      { itemKey: "admin-users", text: "Users", icon: <IconUserGroup /> },
-      { itemKey: "admin-applications", text: "Applications", icon: <IconApps /> },
-      { itemKey: "admin-access", text: "Access", icon: <IconKey /> },
-      { itemKey: "admin-activity", text: "Activity", icon: <IconHistory /> },
+      { itemKey: "admin-overview", text: "概览", icon: <IconGridView /> },
+      { itemKey: "admin-users", text: "用户", icon: <IconUserGroup /> },
+      { itemKey: "admin-applications", text: "应用", icon: <IconApps /> },
+      { itemKey: "admin-access", text: "访问分配", icon: <IconKey /> },
+      { itemKey: "admin-activity", text: "活动记录", icon: <IconHistory /> },
     ] : []),
   ];
   /** Move to the chosen console section and close the drawer. */
@@ -69,17 +69,17 @@ export function ConsoleShell({ session, selectedKey, isBusy, onSignOut, children
     <Avatar size="small" color="blue" alt={session.account.username}>{session.account.username.slice(0, 1).toUpperCase()}</Avatar>
     <div className="console-identity-text">
       <Text strong ellipsis={{ showTooltip: true }}>{session.account.username}</Text>
-      <Text type="tertiary" size="small">{session.account.owner ? "Owner" : session.account.admin ? "Administrator" : "Member"}</Text>
+      <Text type="tertiary" size="small">{session.account.owner ? "所有者" : session.account.admin ? "管理员" : "成员"}</Text>
     </div>
-    <Button theme="borderless" type="tertiary" icon={<IconExit />} aria-label="Sign out" disabled={isBusy} onClick={onSignOut} />
+    <Button theme="borderless" type="tertiary" icon={<IconExit />} aria-label="退出登录" disabled={isBusy} onClick={onSignOut} />
   </div>;
   return <div className="console">
     {isCompact ? <header className="console-topbar">
       <Brand href="/account" />
-      <Button theme="borderless" type="tertiary" icon={<IconMenu />} aria-label="Open navigation" aria-expanded={isDrawerOpen} onClick={() => setIsDrawerOpen(true)} />
+      <Button theme="borderless" type="tertiary" icon={<IconMenu />} aria-label="打开导航" aria-expanded={isDrawerOpen} onClick={() => setIsDrawerOpen(true)} />
     </header> : <aside className="console-sidebar">
       <div className="console-sidebar-brand"><Brand href="/account" /></div>
-      {session.account.admin ? <p className="console-nav-label">Workspace</p> : null}
+      {session.account.admin ? <p className="console-nav-label">工作台</p> : null}
       {navigation}
       <div className="console-sidebar-foot">{identity}</div>
     </aside>}
@@ -145,7 +145,7 @@ export function Panel({ title, description, toolbar, children, id, className }: 
 export function CopyBlock({ value, label, isMultiline = false }: { value: string; label: string; isMultiline?: boolean }) {
   return <div className={"copy-block" + (isMultiline ? " copy-block-multiline" : "")}>
     <code aria-label={label}>{value}</code>
-    <Text className="copy-block-action" copyable={{ content: value, copyTip: "Copy", successTip: "Copied" }} />
+    <Text className="copy-block-action" copyable={{ content: value, copyTip: "复制", successTip: "已复制" }} />
   </div>;
 }
 

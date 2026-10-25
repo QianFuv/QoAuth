@@ -3,7 +3,7 @@ import React, { Suspense, lazy } from "react";
 import { createRoot } from "react-dom/client";
 import "@douyinfe/semi-ui/react19-adapter";
 import LocaleProvider from "@douyinfe/semi-ui/lib/es/locale/localeProvider";
-import englishLocale from "@douyinfe/semi-ui/lib/es/locale/source/en_US";
+import chineseLocale from "@douyinfe/semi-ui/lib/es/locale/source/zh_CN";
 import "@douyinfe/semi-ui/lib/es/_base/base.css";
 import "./style.css";
 
@@ -16,14 +16,14 @@ const FixtureLogin = lazy(() => import("./fixture").then(module => ({ default: m
 /**
  * Pick the top-level page by path; every other path is server-authorized portal content.
  *
- * Semi built-in strings (pagination, empty states) follow the product's English copy.
+ * Semi built-in strings (pagination, empty states) use Simplified Chinese like the product copy.
  *
  * @returns The lazily loaded page for the current path.
  */
 function App() {
   const path = window.location.pathname;
-  return <LocaleProvider locale={englishLocale}>
-    <Suspense fallback={<div className="boot" role="status"><span className="boot-mark" aria-hidden="true" /><span>Loading QoAuth…</span></div>}>
+  return <LocaleProvider locale={chineseLocale}>
+    <Suspense fallback={<div className="boot" role="status"><span className="boot-mark" aria-hidden="true" /><span>正在加载 QoAuth…</span></div>}>
       {path === "/" ? <Hero /> : path === "/fixture/login" ? <FixtureLogin /> : <Portal />}
     </Suspense>
   </LocaleProvider>;

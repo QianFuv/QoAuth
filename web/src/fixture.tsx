@@ -12,17 +12,17 @@ export function FixtureLogin() {
   const requestId = new URLSearchParams(window.location.search).get("request");
   return <AuthLayout>
     <div className="auth-card">
-      <p className="eyebrow">Test fixture</p>
+      <p className="eyebrow">测试夹具</p>
       {requestId ? <>
-        <h1 className="auth-title">Synthetic local test</h1>
-        <p className="auth-lead">This test identity has no real account or password.</p>
+        <h1 className="auth-title">本地合成测试</h1>
+        <p className="auth-lead">这个测试身份没有真实账户或密码。</p>
         <form method="post" action="/fixture/login" className="logout-form">
           <input type="hidden" name="request" value={requestId} />
-          <Button htmlType="submit" theme="solid" size="large" block>Continue as fixture user</Button>
+          <Button htmlType="submit" theme="solid" size="large" block>以夹具用户继续</Button>
         </form>
       </> : <>
-        <h1 className="auth-title">Local feasibility build</h1>
-        <p className="auth-lead">Production account setup is not available in this build.</p>
+        <h1 className="auth-title">本地可行性构建</h1>
+        <p className="auth-lead">此构建不提供正式账户初始化。</p>
       </>}
     </div>
   </AuthLayout>;

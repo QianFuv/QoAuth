@@ -9,7 +9,7 @@ import { IconApps, IconKey, IconShield } from "@douyinfe/semi-icons";
  * @returns The brand mark as a home link.
  */
 export function Brand({ href = "/", isInverted = false }: { href?: string; isInverted?: boolean }) {
-  return <a className={"brand" + (isInverted ? " brand-inverted" : "")} href={href} aria-label="QoAuth home">
+  return <a className={"brand" + (isInverted ? " brand-inverted" : "")} href={href} aria-label="QoAuth 主页">
     <span className="brand-mark" aria-hidden="true"><span /></span>
     <span className="brand-name">QoAuth</span>
   </a>;
@@ -87,12 +87,12 @@ export function AuthLayout({ children, aside }: { children: React.ReactNode; asi
     <aside className="auth-aside" aria-hidden={aside ? undefined : true}>
       <Brand isInverted />
       <div className="auth-aside-body">{aside ?? <AuthAsideDefault />}</div>
-      <p className="auth-aside-foot">Self-hosted identity · one issuer · local accounts</p>
+      <p className="auth-aside-foot">自托管身份认证 · 单一签发者 · 本地账户</p>
     </aside>
     <main className="auth-main">
       <div className="auth-mobile-brand"><Brand /></div>
       <div className="auth-panel enter">{children}</div>
-      <p className="auth-footnote"><a href="/">About QoAuth</a></p>
+      <p className="auth-footnote"><a href="/">关于 QoAuth</a></p>
     </main>
   </div>;
 }
@@ -100,11 +100,11 @@ export function AuthLayout({ children, aside }: { children: React.ReactNode; asi
 /** Default wide-screen statement made only of implemented behavior. */
 function AuthAsideDefault() {
   return <>
-    <h2 className="auth-aside-title">One sign-in for the applications you run yourself.</h2>
+    <h2 className="auth-aside-title">一次登录，<wbr />通行你自建的<wbr />所有应用。</h2>
     <ul className="auth-aside-list">
-      <li><IconKey aria-hidden="true" /><span>Passwords are verified only by this QoAuth server.</span></li>
-      <li><IconShield aria-hidden="true" /><span>Administrators must use an authenticator app.</span></li>
-      <li><IconApps aria-hidden="true" /><span>You approve which permissions each application receives.</span></li>
+      <li><IconKey aria-hidden="true" /><span>密码只由这台 QoAuth 服务器校验。</span></li>
+      <li><IconShield aria-hidden="true" /><span>管理员必须使用验证器应用。</span></li>
+      <li><IconApps aria-hidden="true" /><span>每个应用获得哪些权限，由你确认。</span></li>
     </ul>
   </>;
 }
@@ -116,5 +116,5 @@ function AuthAsideDefault() {
  * @returns A localized date and time.
  */
 export function formatTime(seconds: number): string {
-  return new Date(seconds * 1000).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  return new Date(seconds * 1000).toLocaleString("zh-CN", { dateStyle: "medium", timeStyle: "short", hour12: false });
 }

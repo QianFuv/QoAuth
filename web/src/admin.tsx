@@ -35,7 +35,49 @@ interface AdminProps { session: SessionState; run: (task: () => Promise<void>) =
  * @returns The human-readable application type.
  */
 function applicationType(application: Application): string {
-  return application.resource ? "Resource API" : application.public ? "Public client (PKCE)" : "Server-side client";
+  return application.resource ? "资源 API" : application.public ? "公开客户端（PKCE）" : "服务端客户端";
+}
+
+/** Chinese labels for the activity event names the server records; unknown names show as-is. */
+const ACTION_LABELS: Record<string, string> = {
+  "initialize": "初始化实例",
+  "password-login": "密码登录",
+  "mfa-enroll": "绑定验证器",
+  "mfa-verify": "多因素验证",
+  "mfa-recovery": "使用恢复码恢复",
+  "recovery-code": "恢复码校验",
+  "authorize": "授权",
+  "code-exchange": "兑换授权码",
+  "code-reuse": "授权码重复使用",
+  "refresh": "刷新令牌",
+  "refresh-reuse": "刷新令牌重复使用",
+  "revoke": "撤销令牌",
+  "invalidate": "使授权失效",
+  "session-revoke": "撤销会话",
+  "consent-withdraw": "撤回授权同意",
+  "user-create": "创建用户",
+  "user-disable": "停用用户",
+  "credential-reset": "重置密码",
+  "application-create": "注册应用",
+  "application-disable": "停用应用",
+  "application-replace-disabled": "替换已停用应用",
+  "assignment-change": "变更访问分配",
+  "signing-rotate": "轮换签名密钥",
+  "maintenance-cleanup": "维护清理",
+  "restore-quarantine": "恢复隔离期",
+  "restore-owner-reviewed": "恢复后所有者复核",
+  "host-user-recovery": "本地恢复用户",
+};
+
+/**
+ * Show an activity event by its Chinese label with the recorded event name kept beside it.
+ *
+ * @param props - The recorded event name.
+ * @returns A label plus the original event name.
+ */
+function ActionLabel({ action }: { action: string }) {
+  const label = ACTION_LABELS[action];
+  return <span className="action-label"><span className="activity-action">{label ?? action}</span>{label ? <code className="action-code">{action}</code> : null}</span>;
 }
 
 /**
@@ -61,80 +103,80 @@ export function AdminPanel({ session, run, busy, section }: AdminProps) {
   useEffect(() => { void reload().catch(() => setIsLoadFailed(true)); }, [reload]);
   /** Disable a non-owner user; the server revokes their existing authentication. */
   function disableUser(user: Account) {
-    return run(async () => { await postJson("/api/users/disable", { user: user.id }, session.csrf); Toast.success("User disabled; existing authentication was revoked."); await reload(); });
+    return run(async () => { await postJson("/api/users/disable", { user: user.id }, session.csrf); Toast.success("用户已停用，现有登录已撤销。"); await reload(); });
   }
   /** Disable an application; the server revokes its grants. */
   function disableApplication(application: Application) {
-    return run(async () => { await postJson("/api/applications/disable", { client: application.id }, session.csrf); Toast.success("Application disabled and grants revoked."); await reload(); });
+    return run(async () => { await postJson("/api/applications/disable", { client: application.id }, session.csrf); Toast.success("应用已停用，授权已撤销。"); await reload(); });
   }
   const sharedSheets = <>
     <UserSheet session={session} run={run} busy={busy} isOpen={isUserSheetOpen} onClose={() => setIsUserSheetOpen(false)} onDone={reload} />
     <ResetSheet session={session} run={run} busy={busy} users={users ?? []} target={resetTarget} onClose={() => setResetTarget(null)} onDone={reload} />
     <ApplicationSheet session={session} run={run} busy={busy} state={applicationSheet} onClose={() => setApplicationSheet(null)} onRegistered={async clientSecret => { setSecret(clientSecret); await reload(); }} />
     <Modal
-      title="Copy the new client secret"
+      title="复制新的客户端密钥"
       visible={secret !== ""}
       closable={false}
       maskClosable={false}
       closeOnEsc={false}
-      footer={<Button theme="solid" onClick={() => setSecret("")}>I saved the secret</Button>}
+      footer={<Button theme="solid" onClick={() => setSecret("")}>我已保存密钥</Button>}
       width="min(520px, calc(100vw - 32px))"
     >
-      <p className="modal-text">Store this in the application's server configuration. QoAuth keeps only a hash and shows the secret this one time.</p>
-      <CopyBlock value={secret} label="Client secret" />
+      <p className="modal-text">请将其保存到应用的服务端配置中。QoAuth 只保存哈希值，密钥仅显示这一次。</p>
+      <CopyBlock value={secret} label="客户端密钥" />
     </Modal>
   </>;
-  const freshNotice = !session.fresh ? <Banner className="enter" type="warning" title="Fresh sign-in required for changes" description="Administrative changes need a sign-in with MFA within the last five minutes." closeIcon={null}>
-    <div className="banner-actions"><Button theme="solid" onClick={() => window.location.assign("/login")}>Sign in again</Button></div>
+  const freshNotice = !session.fresh ? <Banner className="enter" type="warning" title="变更前需要重新登录" description="管理变更要求在最近 5 分钟内完成过带 MFA 的登录。" closeIcon={null}>
+    <div className="banner-actions"><Button theme="solid" onClick={() => window.location.assign("/login")}>重新登录</Button></div>
   </Banner> : null;
-  if (isLoadFailed) return <div className="console-page"><StatusView illustration={<IllustrationFailure />} title="Administration unavailable" description="Unable to load administration data. Sign in again if your session expired." action={<Button icon={<IconRefresh />} onClick={() => void reload().catch(() => setIsLoadFailed(true))}>Try again</Button>} /></div>;
-  if (!users || !apps || !activity) return <div className="console-page" role="status" aria-label="Loading administration"><Skeleton active loading placeholder={<><Skeleton.Title style={{ width: 240, height: 32, marginBottom: 24 }} /><Skeleton.Paragraph rows={8} /></>} /></div>;
+  if (isLoadFailed) return <div className="console-page"><StatusView illustration={<IllustrationFailure />} title="管理后台暂不可用" description="管理数据加载失败。如果会话已过期，请重新登录。" action={<Button icon={<IconRefresh />} onClick={() => void reload().catch(() => setIsLoadFailed(true))}>重试</Button>} /></div>;
+  if (!users || !apps || !activity) return <div className="console-page" role="status" aria-label="正在加载管理后台"><Skeleton active loading placeholder={<><Skeleton.Title style={{ width: 240, height: 32, marginBottom: 24 }} /><Skeleton.Paragraph rows={8} /></>} /></div>;
   const openRegistration = () => setApplicationSheet({ review: null });
   if (section === "users") return <div className="console-page">
-    <PageHeader eyebrow="Administration" title="Users" description="Local accounts in this installation. New users need an application assignment before they can sign in to it." actions={<Button theme="solid" icon={<IconPlus />} onClick={() => setIsUserSheetOpen(true)}>Create user</Button>} />
+    <PageHeader eyebrow="管理" title="用户" description="本实例中的本地账户。新用户需要先分配应用，才能登录该应用。" actions={<Button theme="solid" icon={<IconPlus />} onClick={() => setIsUserSheetOpen(true)}>创建用户</Button>} />
     {freshNotice}
     <UsersTable users={users} busy={busy} isFresh={session.fresh} onDisable={disableUser} onReset={user => setResetTarget(user.id)} />
     {sharedSheets}
   </div>;
   if (section === "applications") return <div className="console-page">
-    <PageHeader eyebrow="Administration" title="Applications" description="OIDC clients and resource APIs with exact callbacks and explicit scopes." actions={<Button theme="solid" icon={<IconPlus />} onClick={openRegistration}>Register application</Button>} />
+    <PageHeader eyebrow="管理" title="应用" description="OIDC 客户端与资源 API，使用精确回调地址和显式权限范围。" actions={<Button theme="solid" icon={<IconPlus />} onClick={openRegistration}>注册应用</Button>} />
     {freshNotice}
     <ApplicationsTable apps={apps} busy={busy} onDisable={disableApplication} onReview={application => { setSecret(""); setApplicationSheet({ review: application }); }} />
     {sharedSheets}
   </div>;
   if (section === "access") return <div className="console-page">
-    <PageHeader eyebrow="Administration" title="Access" description="Assign or remove one user's access to one application." />
+    <PageHeader eyebrow="管理" title="访问分配" description="为某个用户分配或移除某个应用的访问权限。" />
     {freshNotice}
     <AssignmentPanel session={session} run={run} busy={busy} users={users} apps={apps} onDone={reload} onRegister={() => navigate("/admin#applications")} />
     {sharedSheets}
   </div>;
   if (section === "activity") return <div className="console-page">
-    <PageHeader eyebrow="Administration" title="Activity" description="The latest security events recorded by this installation." />
+    <PageHeader eyebrow="管理" title="活动记录" description="本实例记录的最新安全事件。" />
     <ActivityTable activity={activity} users={users} apps={apps} />
     {sharedSheets}
   </div>;
   const activeApps = apps.filter(app => app.enabled);
   return <div className="console-page">
     <PageHeader
-      eyebrow="Administration"
-      title="Installation overview"
-      description="Local users and the applications they can access."
-      tags={<Tag color="green" size="large" prefixIcon={<IconShield />}>Administrator MFA verified</Tag>}
-      actions={<><Button icon={<IconPlus />} onClick={() => setIsUserSheetOpen(true)}>Create user</Button><Button theme="solid" icon={<IconPlus />} onClick={openRegistration}>Register application</Button></>}
+      eyebrow="管理"
+      title="实例概览"
+      description="本地用户以及他们可以访问的应用。"
+      tags={<Tag color="green" size="large" prefixIcon={<IconShield />}>管理员 MFA 已验证</Tag>}
+      actions={<><Button icon={<IconPlus />} onClick={() => setIsUserSheetOpen(true)}>创建用户</Button><Button theme="solid" icon={<IconPlus />} onClick={openRegistration}>注册应用</Button></>}
     />
     {freshNotice}
     <div className="stat-row enter">
-      <button type="button" className="stat" onClick={() => navigate("/admin#users")}><IconUserGroup aria-hidden="true" /><strong>{users.length}</strong><span>Local users</span><small>{users.filter(user => !user.enabled).length} disabled</small></button>
-      <button type="button" className="stat" onClick={() => navigate("/admin#applications")}><IconApps aria-hidden="true" /><strong>{activeApps.length}</strong><span>Active applications</span><small>{apps.length - activeApps.length} disabled</small></button>
-      <button type="button" className="stat" onClick={() => navigate("/admin#activity")}><IconHistory aria-hidden="true" /><strong>{activity.length}</strong><span>Recorded events</span><small>Latest {activity.length >= 100 ? "100" : activity.length} shown</small></button>
+      <button type="button" className="stat" onClick={() => navigate("/admin#users")}><IconUserGroup aria-hidden="true" /><strong>{users.length}</strong><span>本地用户</span><small>已停用 {users.filter(user => !user.enabled).length} 个</small></button>
+      <button type="button" className="stat" onClick={() => navigate("/admin#applications")}><IconApps aria-hidden="true" /><strong>{activeApps.length}</strong><span>启用中的应用</span><small>已停用 {apps.length - activeApps.length} 个</small></button>
+      <button type="button" className="stat" onClick={() => navigate("/admin#activity")}><IconHistory aria-hidden="true" /><strong>{activity.length}</strong><span>已记录事件</span><small>显示最近 {activity.length >= 100 ? "100" : activity.length} 条</small></button>
     </div>
     <div className="panel-grid">
-      <Panel title="Recent activity" description="Event names and account identifiers only — never credentials." toolbar={<Button theme="borderless" onClick={() => navigate("/admin#activity")}>View all</Button>}>
-        {activity.length ? <Timeline className="activity-timeline">{activity.slice(0, 6).map((event, index) => <Timeline.Item key={`${event.time}-${index}`} time={formatTime(event.time)}><span className="activity-action">{event.action}</span> <SubjectLabel subject={event.subject} users={users} apps={apps} /></Timeline.Item>)}</Timeline> : <Empty image={<IllustrationNoContent />} description="No activity recorded yet." />}
+      <Panel title="最近活动" description="只记录事件名称与账户标识，从不记录凭据。" toolbar={<Button theme="borderless" onClick={() => navigate("/admin#activity")}>查看全部</Button>}>
+        {activity.length ? <Timeline className="activity-timeline">{activity.slice(0, 6).map((event, index) => <Timeline.Item key={`${event.time}-${index}`} time={formatTime(event.time)}><ActionLabel action={event.action} /> <SubjectLabel subject={event.subject} users={users} apps={apps} /></Timeline.Item>)}</Timeline> : <Empty image={<IllustrationNoContent />} description="暂无活动记录。" />}
       </Panel>
-      <Panel title="Applications" description="Registered clients and resource APIs." toolbar={<Button theme="borderless" onClick={() => navigate("/admin#applications")}>Manage</Button>}>
-        {apps.length ? <ul className="mini-list">{apps.slice(0, 6).map(app => <li key={app.id}><div><strong>{app.name}</strong><code>{app.id}</code></div>{app.enabled ? <Tag color="green" size="small">Active</Tag> : <Tag color="grey" size="small">Disabled</Tag>}</li>)}</ul>
-          : <Empty image={<IllustrationNoContent />} description="No applications yet. Register a resource API first if clients will call one."><Button theme="solid" icon={<IconPlus />} onClick={openRegistration}>Register application</Button></Empty>}
+      <Panel title="应用" description="已注册的客户端与资源 API。" toolbar={<Button theme="borderless" onClick={() => navigate("/admin#applications")}>管理</Button>}>
+        {apps.length ? <ul className="mini-list">{apps.slice(0, 6).map(app => <li key={app.id}><div><strong>{app.name}</strong><code>{app.id}</code></div>{app.enabled ? <Tag color="green" size="small">启用</Tag> : <Tag color="grey" size="small">已停用</Tag>}</li>)}</ul>
+          : <Empty image={<IllustrationNoContent />} description="还没有应用。如果客户端要调用资源 API，请先注册资源 API。"><Button theme="solid" icon={<IconPlus />} onClick={openRegistration}>注册应用</Button></Empty>}
       </Panel>
     </div>
     {sharedSheets}
@@ -144,21 +186,21 @@ export function AdminPanel({ session, run, busy, section }: AdminProps) {
 /** Users table on wide screens and a stacked list on small screens. */
 function UsersTable({ users, busy, isFresh, onDisable, onReset }: { users: Account[]; busy: boolean; isFresh: boolean; onDisable: (user: Account) => Promise<void>; onReset: (user: Account) => void }) {
   const isCompact = useMediaQuery(COMPACT_QUERY);
-  const status = (user: Account) => user.owner ? <Tag color="blue" size="small">Owner</Tag> : user.enabled ? <Tag color="green" size="small">Active</Tag> : <Tag color="grey" size="small">Disabled</Tag>;
-  const role = (user: Account) => <span className="role-cell">{user.admin ? "Administrator" : "Member"}{user.require_mfa || user.admin ? <Tag size="small" prefixIcon={<IconLock />}>MFA required</Tag> : null}</span>;
-  const actions = (user: Account) => user.owner ? <span className="muted-cell">Recover with local command</span> : <div className="row-actions">
-    <Button theme="borderless" disabled={busy || !isFresh} onClick={() => onReset(user)}>Reset password</Button>
-    {user.enabled ? <Popconfirm title={`Disable ${user.username}?`} content="Existing sessions, codes and grants are revoked. The account can be restored only with the local recover-user command." okText="Disable" okType="danger" cancelText="Cancel" onConfirm={() => onDisable(user)}>
-      <Button type="danger" theme="borderless" disabled={busy}>Disable</Button>
+  const status = (user: Account) => user.owner ? <Tag color="blue" size="small">所有者</Tag> : user.enabled ? <Tag color="green" size="small">启用</Tag> : <Tag color="grey" size="small">已停用</Tag>;
+  const role = (user: Account) => <span className="role-cell">{user.admin ? "管理员" : "成员"}{user.require_mfa || user.admin ? <Tag size="small" prefixIcon={<IconLock />}>需要 MFA</Tag> : null}</span>;
+  const actions = (user: Account) => user.owner ? <span className="muted-cell">通过本地命令恢复</span> : <div className="row-actions">
+    <Button theme="borderless" disabled={busy || !isFresh} onClick={() => onReset(user)}>重置密码</Button>
+    {user.enabled ? <Popconfirm title={`停用 ${user.username}？`} content="现有会话、验证码与授权会被撤销。之后只能通过本地 recover-user 命令恢复此账户。" okText="停用" okType="danger" cancelText="取消" onConfirm={() => onDisable(user)}>
+      <Button type="danger" theme="borderless" disabled={busy}>停用</Button>
     </Popconfirm> : null}
   </div>;
-  const empty = <Empty image={<IllustrationNoContent />} description="No users yet." />;
-  return <Panel title="All users" description={`${users.length} local ${users.length === 1 ? "account" : "accounts"}.`}>
+  const empty = <Empty image={<IllustrationNoContent />} description="还没有用户。" />;
+  return <Panel title="全部用户" description={`共 ${users.length} 个本地账户。`}>
     {isCompact ? <List className="stack-list" dataSource={users} emptyContent={empty} renderItem={(user: Account) => <List.Item main={<div className="stack-item"><strong className="wrap-anywhere">{user.username}</strong>{role(user)}<div className="stack-tags">{status(user)}</div>{actions(user)}</div>} />} />
       : <Table className="data-table" rowKey="id" pagination={users.length > 20 ? { pageSize: 20 } : false} dataSource={users} empty={empty} columns={[
-          { title: "User", dataIndex: "username", render: (_value: string, user: Account) => <div className="identity-cell"><strong>{user.username}</strong><code>{user.id}</code></div> },
-          { title: "Role", dataIndex: "admin", render: (_value: boolean, user: Account) => role(user) },
-          { title: "Status", dataIndex: "enabled", width: 120, render: (_value: boolean, user: Account) => status(user) },
+          { title: "用户", dataIndex: "username", render: (_value: string, user: Account) => <div className="identity-cell"><strong>{user.username}</strong><code>{user.id}</code></div> },
+          { title: "角色", dataIndex: "admin", render: (_value: boolean, user: Account) => role(user) },
+          { title: "状态", dataIndex: "enabled", width: 120, render: (_value: boolean, user: Account) => status(user) },
           { title: "", dataIndex: "id", align: "right", render: (_value: string, user: Account) => actions(user) },
         ]} />}
   </Panel>;
@@ -166,16 +208,16 @@ function UsersTable({ users, busy, isFresh, onDisable, onReset }: { users: Accou
 
 /** Wrap a list of exact values, or show a dash when none are registered. */
 function ValueList({ values }: { values: string[] }) {
-  if (!values.length) return <span className="muted-cell">None</span>;
+  if (!values.length) return <span className="muted-cell">无</span>;
   return <ul className="value-list">{values.map(value => <li key={value}><code>{value}</code></li>)}</ul>;
 }
 
 /** Full registered configuration for one application. */
 function ApplicationDetails({ application }: { application: Application }) {
   return <dl className="detail-grid">
-    {!application.resource ? <><dt>Callback URLs</dt><dd><ValueList values={application.redirects ?? []} /></dd><dt>Signed-out URLs</dt><dd><ValueList values={application.logout_redirects ?? []} /></dd></> : null}
-    <dt>Scopes</dt><dd><ValueList values={application.scopes ?? []} /></dd>
-    <dt>{application.resource ? "Audience" : "Resource APIs"}</dt><dd><ValueList values={application.audiences ?? []} /></dd>
+    {!application.resource ? <><dt>回调地址</dt><dd><ValueList values={application.redirects ?? []} /></dd><dt>登出地址</dt><dd><ValueList values={application.logout_redirects ?? []} /></dd></> : null}
+    <dt>权限范围</dt><dd><ValueList values={application.scopes ?? []} /></dd>
+    <dt>{application.resource ? "受众（Audience）" : "资源 API"}</dt><dd><ValueList values={application.audiences ?? []} /></dd>
   </dl>;
 }
 
@@ -183,12 +225,12 @@ function ApplicationDetails({ application }: { application: Application }) {
 function ApplicationsTable({ apps, busy, onDisable, onReview }: { apps: Application[]; busy: boolean; onDisable: (application: Application) => Promise<void>; onReview: (application: Application) => void }) {
   const isCompact = useMediaQuery(COMPACT_QUERY);
   const [openId, setOpenId] = useState("");
-  const status = (application: Application) => application.enabled ? <Tag color="green" size="small">Active</Tag> : <Tag color="grey" size="small">Disabled</Tag>;
+  const status = (application: Application) => application.enabled ? <Tag color="green" size="small">启用</Tag> : <Tag color="grey" size="small">已停用</Tag>;
   const action = (application: Application) => application.enabled
-    ? <Popconfirm title={`Disable ${application.name}?`} content="Existing grants are revoked. Re-enabling requires reviewing and replacing its settings." okText="Disable" okType="danger" cancelText="Cancel" onConfirm={() => onDisable(application)}><Button type="danger" theme="borderless" disabled={busy}>Disable</Button></Popconfirm>
-    : <Button theme="borderless" disabled={busy} onClick={() => onReview(application)}>Review settings</Button>;
-  const empty = <Empty image={<IllustrationNoContent />} description="No applications registered yet." />;
-  return <Panel title="Registered applications" description="Expand an application to see its exact callbacks, scopes and resource APIs.">
+    ? <Popconfirm title={`停用 ${application.name}？`} content="现有授权会被撤销。重新启用需要复核并替换其设置。" okText="停用" okType="danger" cancelText="取消" onConfirm={() => onDisable(application)}><Button type="danger" theme="borderless" disabled={busy}>停用</Button></Popconfirm>
+    : <Button theme="borderless" disabled={busy} onClick={() => onReview(application)}>复核设置</Button>;
+  const empty = <Empty image={<IllustrationNoContent />} description="还没有注册应用。" />;
+  return <Panel title="已注册应用" description="展开应用可查看其精确回调地址、权限范围与资源 API。">
     {isCompact ? <List className="stack-list" dataSource={apps} emptyContent={empty} renderItem={(application: Application) => {
       const isOpen = openId === application.id;
       return <List.Item main={<div className="stack-item">
@@ -196,17 +238,17 @@ function ApplicationsTable({ apps, busy, onDisable, onReview }: { apps: Applicat
         <code className="wrap-anywhere">{application.id}</code>
         <div className="stack-tags">{status(application)}<Tag size="small">{applicationType(application)}</Tag></div>
         <div className="row-actions">
-          <Button theme="borderless" type="tertiary" icon={isOpen ? <IconChevronUp /> : <IconChevronDown />} aria-expanded={isOpen} onClick={() => setOpenId(isOpen ? "" : application.id)}>{isOpen ? "Hide details" : "Details"}</Button>
+          <Button theme="borderless" type="tertiary" icon={isOpen ? <IconChevronUp /> : <IconChevronDown />} aria-expanded={isOpen} onClick={() => setOpenId(isOpen ? "" : application.id)}>{isOpen ? "收起详情" : "详情"}</Button>
           {action(application)}
         </div>
         <Collapsible isOpen={isOpen} keepDOM={false}><ApplicationDetails application={application} /></Collapsible>
       </div>} />;
     }} />
       : <Table className="data-table" rowKey="id" pagination={apps.length > 20 ? { pageSize: 20 } : false} dataSource={apps} empty={empty} hideExpandedColumn={false} expandedRowRender={(application?: Application) => application ? <ApplicationDetails application={application} /> : null} columns={[
-          { title: "Application", dataIndex: "name", render: (_value: string, application: Application) => <div className="identity-cell"><strong>{application.name}</strong><code>{application.id}</code></div> },
-          { title: "Type", dataIndex: "resource", render: (_value: boolean, application: Application) => applicationType(application) },
-          { title: "Scopes", dataIndex: "scopes", render: (scopes: string[]) => <div className="tag-wrap">{(scopes ?? []).map(scope => <Tag key={scope} size="small">{scope}</Tag>)}</div> },
-          { title: "Status", dataIndex: "enabled", width: 110, render: (_value: boolean, application: Application) => status(application) },
+          { title: "应用", dataIndex: "name", render: (_value: string, application: Application) => <div className="identity-cell"><strong>{application.name}</strong><code>{application.id}</code></div> },
+          { title: "类型", dataIndex: "resource", render: (_value: boolean, application: Application) => applicationType(application) },
+          { title: "权限范围", dataIndex: "scopes", render: (scopes: string[]) => <div className="tag-wrap">{(scopes ?? []).map(scope => <Tag key={scope} size="small">{scope}</Tag>)}</div> },
+          { title: "状态", dataIndex: "enabled", width: 110, render: (_value: boolean, application: Application) => status(application) },
           { title: "", dataIndex: "id", align: "right", render: (_value: string, application: Application) => action(application) },
         ]} />}
   </Panel>;
@@ -222,27 +264,27 @@ function ApplicationsTable({ apps, busy, onDisable, onReview }: { apps: Applicat
  * @returns A compact subject label.
  */
 function SubjectLabel({ subject, users, apps }: { subject: string; users: Account[]; apps: Application[] }) {
-  if (subject === "host") return <span className="subject"><span className="subject-name">Host maintenance</span></span>;
+  if (subject === "host") return <span className="subject"><span className="subject-name">主机维护</span></span>;
   const application = apps.find(app => app.id === subject);
   if (application) return <span className="subject"><span className="subject-name">{application.name}</span><code className="subject-id">{application.id}</code></span>;
   const user = users.find(account => account.id === subject);
   const shortId = subject.length > 10 ? subject.slice(0, 8) + "…" : subject;
   return <span className="subject">
     {user ? <span className="subject-name">{user.username}</span> : null}
-    <Typography.Text className="subject-id" copyable={{ content: subject, copyTip: "Copy full ID", successTip: "Copied" }}><code title={subject}>{user ? shortId : "ID " + shortId}</code></Typography.Text>
+    <Typography.Text className="subject-id" copyable={{ content: subject, copyTip: "复制完整 ID", successTip: "已复制" }}><code title={subject}>{user ? shortId : "ID " + shortId}</code></Typography.Text>
   </span>;
 }
 
 /** Latest activity events with pagination. */
 function ActivityTable({ activity, users, apps }: { activity: Activity[]; users: Account[]; apps: Application[] }) {
   const isCompact = useMediaQuery(COMPACT_QUERY);
-  const empty = <Empty image={<IllustrationNoContent />} description="No activity recorded yet." />;
-  return <Panel title="Security events" description="Activity records contain event names and account identifiers, never credentials.">
-    {isCompact ? <List className="stack-list" dataSource={activity.slice(0, 50)} emptyContent={empty} renderItem={(event: Activity) => <List.Item main={<div className="stack-item"><strong>{event.action}</strong><SubjectLabel subject={event.subject} users={users} apps={apps} /><span>{formatTime(event.time)}</span></div>} />} />
+  const empty = <Empty image={<IllustrationNoContent />} description="暂无活动记录。" />;
+  return <Panel title="安全事件" description="活动记录只包含事件名称与账户标识，从不包含凭据。">
+    {isCompact ? <List className="stack-list" dataSource={activity.slice(0, 50)} emptyContent={empty} renderItem={(event: Activity) => <List.Item main={<div className="stack-item"><ActionLabel action={event.action} /><SubjectLabel subject={event.subject} users={users} apps={apps} /><span>{formatTime(event.time)}</span></div>} />} />
       : <Table className="data-table" rowKey={(event?: Activity) => event ? `${event.time}-${event.action}-${event.subject}` : ""} pagination={activity.length > 15 ? { pageSize: 15 } : false} dataSource={activity} empty={empty} columns={[
-          { title: "Event", dataIndex: "action", render: (value: string) => <span className="activity-action">{value}</span> },
-          { title: "Subject", dataIndex: "subject", render: (value: string) => <SubjectLabel subject={value} users={users} apps={apps} /> },
-          { title: "Time", dataIndex: "time", width: 200, render: (value: number) => formatTime(value) },
+          { title: "事件", dataIndex: "action", render: (value: string) => <ActionLabel action={value} /> },
+          { title: "主体", dataIndex: "subject", render: (value: string) => <SubjectLabel subject={value} users={users} apps={apps} /> },
+          { title: "时间", dataIndex: "time", width: 200, render: (value: number) => formatTime(value) },
         ]} />}
   </Panel>;
 }
@@ -280,19 +322,19 @@ function UserSheet({ session, run, busy, isOpen, onClose, onDone }: SheetProps &
   /** Submit the new account after client-side checks. */
   function submit(event?: React.FormEvent<HTMLFormElement>) {
     event?.preventDefault();
-    const isValid = form.check({ username: value => value === "" ? "Enter a username." : /^[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(value) ? "" : "Start with a letter or digit; use letters, digits, dot, dash or underscore.", password: passwordRule(session.password_policy) });
+    const isValid = form.check({ username: value => value === "" ? "请输入用户名。" : /^[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(value) ? "" : "须以字母或数字开头，只能包含字母、数字、点、短横线或下划线。", password: passwordRule(session.password_policy) });
     if (!isValid) return;
     const { username, password } = form.values;
     void run(async () => {
       await postJson("/api/users/create", { username, password }, session.csrf);
-      close(); Toast.success("User created. Assign an application to enable access."); await onDone();
+      close(); Toast.success("用户已创建。分配应用后即可访问。"); await onDone();
     });
   }
-  return <SideSheet title="Create a local user" visible={isOpen} onCancel={close} width={width} className="form-sheet" footer={<div className="sheet-footer"><Button onClick={close}>Cancel</Button><Button theme="solid" loading={busy} onClick={() => submit()}>Create user</Button></div>}>
-    <p className="sheet-lead">The user signs in with this password. Share it through your existing private channel — QoAuth sends no email.</p>
+  return <SideSheet title="创建本地用户" visible={isOpen} onCancel={close} width={width} className="form-sheet" footer={<div className="sheet-footer"><Button onClick={close}>取消</Button><Button theme="solid" loading={busy} onClick={() => submit()}>创建用户</Button></div>}>
+    <p className="sheet-lead">用户将使用这个密码登录。请通过你现有的私密渠道告知对方，QoAuth 不发送邮件。</p>
     <form onSubmit={submit} noValidate>
-      <TextField form={form} field="username" label="Username" name="username" maxLength={64} autoComplete="off" disabled={busy} />
-      <PasswordField form={form} field="password" label="Initial password" policy={session.password_policy} disabled={busy} />
+      <TextField form={form} field="username" label="用户名" name="username" maxLength={64} autoComplete="off" disabled={busy} />
+      <PasswordField form={form} field="password" label="初始密码" policy={session.password_policy} disabled={busy} />
       <button type="submit" hidden tabIndex={-1} />
     </form>
   </SideSheet>;
@@ -309,23 +351,23 @@ function ResetSheet({ session, run, busy, users, target, onClose, onDone }: Shee
   /** Submit the replacement password and always clear the form. */
   function submit(event?: React.FormEvent<HTMLFormElement>) {
     event?.preventDefault();
-    if (!form.check({ user: required("Choose a user."), password: passwordRule(session.password_policy) })) return;
+    if (!form.check({ user: required("请选择用户。"), password: passwordRule(session.password_policy) })) return;
     const { user, password } = form.values;
     void run(async () => {
       try {
         await postJson("/api/users/password", { user, password }, session.csrf);
-        onClose(); Toast.success({ content: "Password reset. Existing sessions, pending codes and grants ended; enrolled MFA is still required. Disabled accounts remain disabled.", duration: 6 }); await onDone();
+        onClose(); Toast.success({ content: "密码已重置。现有会话、待用授权码与授权已结束；已绑定的 MFA 仍然需要。已停用的账户保持停用。", duration: 6 }); await onDone();
       } finally { form.reset(); }
     });
   }
-  return <SideSheet title="Reset a user's password" visible={target !== null} onCancel={close} width={width} className="form-sheet" footer={<div className="sheet-footer"><Button onClick={close}>Cancel</Button><Button type="danger" theme="solid" loading={busy} disabled={!session.fresh} onClick={() => submit()}>Reset password and revoke sessions</Button></div>}>
-    <Banner type="info" closeIcon={null} description="Requires fresh administrator MFA. This ends the user's QoAuth sessions, pending codes and grants and keeps their enrolled MFA. Share the replacement through your existing private channel; QoAuth sends no email." />
+  return <SideSheet title="重置用户密码" visible={target !== null} onCancel={close} width={width} className="form-sheet" footer={<div className="sheet-footer"><Button onClick={close}>取消</Button><Button type="danger" theme="solid" loading={busy} disabled={!session.fresh} onClick={() => submit()}>重置密码并撤销会话</Button></div>}>
+    <Banner type="info" closeIcon={null} description="需要管理员最近完成 MFA 登录。此操作会结束该用户的 QoAuth 会话、待用授权码与授权，并保留其已绑定的 MFA。请通过现有私密渠道告知新密码，QoAuth 不发送邮件。" />
     <form onSubmit={submit} noValidate>
-      <SelectField form={form} field="user" label="Account to reset" placeholder="Choose a user" disabled={busy} options={users.filter(user => !user.owner).map(user => ({ value: user.id, label: user.username + (user.enabled ? "" : " (disabled)") }))} />
-      <PasswordField form={form} field="password" label="Replacement password" policy={session.password_policy} disabled={busy} />
+      <SelectField form={form} field="user" label="要重置的账户" placeholder="选择用户" disabled={busy} options={users.filter(user => !user.owner).map(user => ({ value: user.id, label: user.username + (user.enabled ? "" : "（已停用）") }))} />
+      <PasswordField form={form} field="password" label="新密码" policy={session.password_policy} disabled={busy} />
       <button type="submit" hidden tabIndex={-1} />
     </form>
-    <p className="sheet-lead">Use My account to change your own password. Lost-owner recovery remains a local maintenance command.</p>
+    <p className="sheet-lead">修改自己的密码请前往“我的账户”。所有者丢失凭据时仍需使用本地维护命令恢复。</p>
   </SideSheet>;
 }
 
@@ -358,7 +400,7 @@ function ApplicationSheetBody({ session, run, busy, isOpen, review, onClose, onR
   /** Build the exact application payload the server validates. */
   function submit(event?: React.FormEvent<HTMLFormElement>) {
     event?.preventDefault();
-    if (!form.check({ id: required("Enter a client ID."), name: required("Enter a display name."), scopes: value => splitCommaList(value).length ? "" : "Enter at least one scope." })) return;
+    if (!form.check({ id: required("请输入客户端 ID。"), name: required("请输入显示名称。"), scopes: value => splitCommaList(value).length ? "" : "请至少输入一个权限范围。" })) return;
     const values = form.values;
     const id = values.id;
     const application = { id, name: values.name, resource: isResource, public: kind === "public", redirects: isResource ? [] : splitLines(values.redirects), logout_redirects: isResource ? [] : splitLines(values.logout), scopes: splitCommaList(values.scopes), audiences: isResource ? [id] : splitCommaList(values.audiences) };
@@ -366,36 +408,36 @@ function ApplicationSheetBody({ session, run, busy, isOpen, review, onClose, onR
     void run(async () => {
       const result = await postJson<{ client_secret: string }>(path, { application }, session.csrf);
       form.reset(); onClose();
-      Toast.success({ content: "Application registered with reviewed settings. Assign access explicitly; prior credentials and grants are not restored.", duration: 6 });
+      Toast.success({ content: "应用已按复核后的设置注册。请显式分配访问权限；旧凭据与授权不会恢复。", duration: 6 });
       await onRegistered(result.client_secret);
     });
   }
   const modeId = form.idFor("mode");
   const kindId = form.idFor("kind");
-  return <SideSheet title={review ? "Review disabled application" : "Register an application"} visible={isOpen} onCancel={onClose} width={width} className="form-sheet" footer={<div className="sheet-footer"><Button onClick={onClose}>{review ? "Cancel review" : "Cancel"}</Button><Button theme="solid" loading={busy} onClick={() => submit()}>Register application</Button></div>}>
-    {review ? <Banner type="warning" closeIcon={null} title={review.name} description="These are saved settings, not restored access. Review callbacks and permissions before registering. The previous secret is never returned." /> : null}
+  return <SideSheet title={review ? "复核已停用的应用" : "注册应用"} visible={isOpen} onCancel={onClose} width={width} className="form-sheet" footer={<div className="sheet-footer"><Button onClick={onClose}>{review ? "取消复核" : "取消"}</Button><Button theme="solid" loading={busy} onClick={() => submit()}>注册应用</Button></div>}>
+    {review ? <Banner type="warning" closeIcon={null} title={review.name} description="这些是已保存的设置，不代表恢复访问。注册前请复核回调地址与权限。旧密钥永远不会返回。" /> : null}
     <form onSubmit={submit} noValidate>
-      <Field id={modeId} isGroup label="Registration action" hint="Replacement creates a new secret for confidential clients and clears old assignments. Keep the application type unchanged. Disable dependent applications before replacing a resource API, then register them again with reviewed scopes.">
+      <Field id={modeId} isGroup label="注册方式" hint="替换会为机密客户端生成新密钥并清除旧的访问分配。请保持应用类型不变。替换资源 API 前，请先停用依赖它的应用，之后再按复核后的权限范围重新注册。">
         <RadioGroup type="button" name="registration-mode" value={form.values.mode} onChange={event => form.setValue("mode")(String(event.target.value))} aria-labelledby={modeId + "-label"} disabled={busy}>
-          <Radio value="create">Create new</Radio>
-          <Radio value="replace">Replace disabled</Radio>
+          <Radio value="create">新建</Radio>
+          <Radio value="replace">替换已停用应用</Radio>
         </RadioGroup>
       </Field>
-      <TextField form={form} field="id" label="Client ID" name="client-id" maxLength={64} readonly={!!review} autoComplete="off" autoFocus={!!review} disabled={busy} />
-      <TextField form={form} field="name" label="Display name" name="display-name" maxLength={80} autoComplete="off" disabled={busy} />
-      <Field id={kindId} isGroup label="Application type">
+      <TextField form={form} field="id" label="客户端 ID" name="client-id" maxLength={64} readonly={!!review} autoComplete="off" autoFocus={!!review} disabled={busy} />
+      <TextField form={form} field="name" label="显示名称" name="display-name" maxLength={80} autoComplete="off" disabled={busy} />
+      <Field id={kindId} isGroup label="应用类型">
         <RadioGroup type="pureCard" direction="vertical" name="application-kind" className="kind-picker" value={kind} onChange={event => form.setValue("kind")(String(event.target.value))} aria-labelledby={kindId + "-label"} disabled={busy}>
-          <Radio value="confidential" extra="Keeps a client secret on its own server.">Server-side web client</Radio>
-          <Radio value="public" extra="Browser or native app without a secret; requires PKCE.">Public client with PKCE</Radio>
-          <Radio value="resource" extra="Introspects tokens and uses its own ID as audience.">Resource API validator</Radio>
+          <Radio value="confidential" extra="客户端密钥保存在其自己的服务器上。">服务端 Web 客户端</Radio>
+          <Radio value="public" extra="浏览器或原生应用，不持有密钥，必须使用 PKCE。">公开客户端（PKCE）</Radio>
+          <Radio value="resource" extra="内省令牌，并以自身 ID 作为受众。">资源 API 校验方</Radio>
         </RadioGroup>
       </Field>
       {!isResource ? <>
-        <TextField form={form} field="redirects" label="Exact callback URLs, one per line" isMultiline placeholder="https://app.example.test/callback" disabled={busy} />
-        <TextField form={form} field="logout" label="Exact signed-out URLs, one per line" isMultiline placeholder="https://app.example.test/signed-out" disabled={busy} />
+        <TextField form={form} field="redirects" label="精确回调地址（每行一个）" isMultiline placeholder="https://app.example.test/callback" disabled={busy} />
+        <TextField form={form} field="logout" label="精确登出地址（每行一个）" isMultiline placeholder="https://app.example.test/signed-out" disabled={busy} />
       </> : null}
-      <TextField form={form} field="scopes" label="Allowed scopes, comma separated" placeholder="openid, profile, offline_access, notes.read" autoComplete="off" disabled={busy} />
-      {!isResource ? <TextField form={form} field="audiences" label="Resource API client IDs, comma separated" placeholder="notes-api" autoComplete="off" disabled={busy} hint="Register resource APIs first. An API validator uses its own ID as its audience and has no browser callbacks." /> : null}
+      <TextField form={form} field="scopes" label="允许的权限范围（逗号分隔）" placeholder="openid, profile, offline_access, notes.read" autoComplete="off" disabled={busy} />
+      {!isResource ? <TextField form={form} field="audiences" label="资源 API 客户端 ID（逗号分隔）" placeholder="notes-api" autoComplete="off" disabled={busy} hint="请先注册资源 API。API 校验方以自身 ID 作为受众，且没有浏览器回调地址。" /> : null}
       <button type="submit" hidden tabIndex={-1} />
     </form>
   </SideSheet>;
@@ -408,31 +450,31 @@ function AssignmentPanel({ session, run, busy, users, apps, onDone, onRegister }
   /** Save one explicit assignment change. */
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!form.check({ user: required("Choose a user."), client: required("Choose an application.") })) return;
+    if (!form.check({ user: required("请选择用户。"), client: required("请选择应用。") })) return;
     const { user, client, allow } = form.values;
-    void run(async () => { await postJson("/api/assignments", { user, client, allow: allow === "yes" }, session.csrf); Toast.success("Assignment updated. Removed access revokes existing grants and codes."); await onDone(); });
+    void run(async () => { await postJson("/api/assignments", { user, client, allow: allow === "yes" }, session.csrf); Toast.success("访问分配已更新。移除访问会撤销现有授权与授权码。"); await onDone(); });
   }
-  if (!assignableApps.length) return <Panel title="Assign application access"><StatusView illustration={<IllustrationNoContent />} title="No assignable applications" description="Register an active client application before assigning access. Resource APIs are not assigned to users." action={<Button theme="solid" icon={<IconPlus />} onClick={onRegister}>Go to applications</Button>} /></Panel>;
+  if (!assignableApps.length) return <Panel title="分配应用访问"><StatusView illustration={<IllustrationNoContent />} title="没有可分配的应用" description="请先注册一个启用中的客户端应用再分配访问。资源 API 不分配给用户。" action={<Button theme="solid" icon={<IconPlus />} onClick={onRegister}>前往应用</Button>} /></Panel>;
   const allowId = form.idFor("allow");
   return <div className="panel-grid panel-grid-wide-left">
-    <Panel title="Assign application access" description="Users can only sign in to applications they are assigned to.">
+    <Panel title="分配应用访问" description="用户只能登录已分配给他的应用。">
       <form onSubmit={submit} noValidate>
-        <SelectField form={form} field="user" label="User" placeholder="Choose a user" disabled={busy} options={users.filter(user => user.enabled).map(user => ({ value: user.id, label: user.username }))} />
-        <SelectField form={form} field="client" label="Application" placeholder="Choose an application" disabled={busy} options={assignableApps.map(app => ({ value: app.id, label: `${app.name} (${app.id})` }))} />
-        <Field id={allowId} isGroup label="Access">
+        <SelectField form={form} field="user" label="用户" placeholder="选择用户" disabled={busy} options={users.filter(user => user.enabled).map(user => ({ value: user.id, label: user.username }))} />
+        <SelectField form={form} field="client" label="应用" placeholder="选择应用" disabled={busy} options={assignableApps.map(app => ({ value: app.id, label: `${app.name} (${app.id})` }))} />
+        <Field id={allowId} isGroup label="访问权限">
           <RadioGroup type="button" name="assignment-access" value={form.values.allow} onChange={event => form.setValue("allow")(String(event.target.value))} aria-labelledby={allowId + "-label"} disabled={busy}>
-            <Radio value="yes">Allow</Radio>
-            <Radio value="no">Remove and revoke</Radio>
+            <Radio value="yes">允许</Radio>
+            <Radio value="no">移除并撤销</Radio>
           </RadioGroup>
         </Field>
-        <div className="form-actions"><Button htmlType="submit" theme="solid" loading={busy}>Save assignment</Button></div>
+        <div className="form-actions"><Button htmlType="submit" theme="solid" loading={busy}>保存分配</Button></div>
       </form>
     </Panel>
-    <Panel title="How access works">
+    <Panel title="访问规则">
       <ul className="explain-list">
-        <li><IconKey aria-hidden="true" /><span>An assignment lets one user sign in to one client application. There is no group or policy layer.</span></li>
-        <li><IconLock aria-hidden="true" /><span>Removing access revokes that user's existing grants and pending codes for the application.</span></li>
-        <li><IconShield aria-hidden="true" /><span>Users still approve the requested scopes on the consent screen.</span></li>
+        <li><IconKey aria-hidden="true" /><span>一条分配允许一个用户登录一个客户端应用，没有用户组或策略层。</span></li>
+        <li><IconLock aria-hidden="true" /><span>移除访问会撤销该用户在此应用上的现有授权与待用授权码。</span></li>
+        <li><IconShield aria-hidden="true" /><span>用户仍需在授权同意页上确认请求的权限范围。</span></li>
       </ul>
     </Panel>
   </div>;

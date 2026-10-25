@@ -47,32 +47,51 @@ export function splitLines(value: unknown): string[] {
 }
 
 const FRIENDLY_ERRORS: Record<string, string> = {
-  "invalid credentials": "Incorrect username or password.",
-  "try again later": "Too many attempts. Wait a moment and try again.",
-  "invalid proof": "That code was not accepted. Check the code and try again.",
-  "invalid origin or CSRF token": "Your session changed in another tab. Reload this page and try again.",
-  "fresh administrator MFA required": "Sign in again to make sensitive administrative changes.",
-  "fresh login and unenrolled factor required": "Sign in again before setting up an authenticator.",
-  "fresh proof required": "Sign in again before using a recovery code.",
-  "complete MFA first": "Complete multi-factor verification first.",
-  "authentication required": "Sign in to continue.",
-  "session required": "Your session ended. Sign in again.",
-  "operation rejected": "The server rejected this change. Review the values and try again.",
-  "invalid application configuration": "The application settings were rejected. Check client ID, callbacks, scopes and resource APIs.",
-  "invalid username": "Usernames start with a letter or digit and use only letters, digits, dot, dash or underscore.",
+  "invalid credentials": "用户名或密码不正确。",
+  "try again later": "尝试次数过多，请稍后再试。",
+  "invalid proof": "验证码未通过，请检查后重试。",
+  "invalid origin or CSRF token": "会话已在其他标签页中变化，请刷新本页后重试。",
+  "fresh administrator MFA required": "敏感管理操作需要重新登录。",
+  "fresh login and unenrolled factor required": "设置验证器前请重新登录。",
+  "fresh proof required": "使用恢复码前请重新登录。",
+  "complete MFA first": "请先完成多因素验证。",
+  "authentication required": "请登录后继续。",
+  "session required": "会话已结束，请重新登录。",
+  "session unavailable": "会话不可用，请重新登录。",
+  "authentication unavailable": "暂时无法登录，请稍后再试。",
+  "operation rejected": "服务器拒绝了这项更改，请检查输入后重试。",
+  "invalid request": "请求格式无效，请刷新页面后重试。",
+  "invalid application configuration": "应用设置未通过校验，请检查客户端 ID、回调地址、权限范围和资源 API。",
+  "invalid username": "用户名须以字母或数字开头，只能包含字母、数字、点、短横线或下划线。",
+  "invalid authorization transaction": "授权请求已失效，请返回应用重新登录。",
+  "application unavailable": "该应用当前不可用。",
+  "authorization rejected": "授权被拒绝。",
+  "forbidden": "没有执行此操作的权限。",
+  "unavailable": "服务暂时不可用，请稍后再试。",
+  "method not allowed": "不支持此操作。",
 };
 
+/** Chinese explanations for the server's `password policy:` error details. */
+const PASSWORD_POLICY_ERRORS: Array<[string, string]> = [
+  ["choose a less common password", "密码过于常见，请换一个。"],
+  ["at least", "密码长度不符合要求：Unicode 规范化后的字符数或 UTF-8 字节数超出限制。"],
+  ["use valid UTF-8", "密码包含无效字符或超过 UTF-8 字节上限。"],
+];
+
 /**
- * Turn a short plain-text server error into a sentence for display.
+ * Turn a short plain-text server error into a Chinese sentence for display.
  *
  * @param raw - Response text or error message returned by a failed request.
- * @returns A readable message that never adds information the server did not send.
+ * @returns A readable message; unknown errors keep the server's original text.
  */
 export function describeError(raw: string): string {
   const message = raw.trim();
-  if (!message) return "Request failed. Try again.";
+  if (!message) return "请求未成功，请重试。";
   const known = FRIENDLY_ERRORS[message];
   if (known) return known;
-  const sentence = message.charAt(0).toUpperCase() + message.slice(1);
-  return /[.!?]$/.test(sentence) ? sentence : sentence + ".";
+  if (message.startsWith("password policy")) {
+    const match = PASSWORD_POLICY_ERRORS.find(([fragment]) => message.includes(fragment));
+    if (match) return match[1];
+  }
+  return "请求未成功：" + message;
 }

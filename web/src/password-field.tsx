@@ -12,8 +12,8 @@ import { isPasswordWithinPolicy } from "./validation";
  */
 export function passwordRule(policy: PasswordPolicy): (value: string) => string {
   return value => {
-    if (value === "") return "Enter a password.";
-    return isPasswordWithinPolicy(value, policy) ? "" : `Use at least ${policy.min_characters} characters after Unicode normalization and at most ${policy.max_bytes} UTF-8 bytes.`;
+    if (value === "") return "请输入密码。";
+    return isPasswordWithinPolicy(value, policy) ? "" : `Unicode 规范化后至少 ${policy.min_characters} 个字符，且不超过 ${policy.max_bytes} 个 UTF-8 字节。`;
   };
 }
 
@@ -27,5 +27,5 @@ interface PasswordFieldProps<Keys extends string> { form: FormState<Keys>; field
  */
 export function PasswordField<Keys extends string>({ form, field, label, policy, disabled }: PasswordFieldProps<Keys>) {
   return <TextField form={form} field={field} label={label} mode="password" name="new-password" autoComplete="new-password" disabled={disabled}
-    hint={`At least ${policy.min_characters} characters; at most ${policy.max_bytes} UTF-8 bytes. Common passwords are rejected. Spaces and password-manager paste work.`} />;
+    hint={`至少 ${policy.min_characters} 个字符，最多 ${policy.max_bytes} 个 UTF-8 字节。常见密码会被拒绝；支持空格和密码管理器粘贴。`} />;
 }

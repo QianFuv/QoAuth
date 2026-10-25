@@ -28,8 +28,10 @@ test("scope lists split at commas and drop empty entries", () => {
   assert.deepEqual(splitCommaList(null), []);
 });
 
-test("server errors become sentences without inventing detail", () => {
-  assert.equal(describeError("invalid credentials\n"), "Incorrect username or password.");
-  assert.equal(describeError("password too common"), "Password too common.");
-  assert.equal(describeError(""), "Request failed. Try again.");
+test("server errors become Chinese sentences without inventing detail", () => {
+  assert.equal(describeError("invalid credentials\n"), "用户名或密码不正确。");
+  assert.equal(describeError("password policy: choose a less common password"), "密码过于常见，请换一个。");
+  assert.equal(describeError("password policy: at least 15 characters after Unicode normalization and at most 1024 UTF-8 bytes"), "密码长度不符合要求：Unicode 规范化后的字符数或 UTF-8 字节数超出限制。");
+  assert.equal(describeError("something unexpected"), "请求未成功：something unexpected");
+  assert.equal(describeError(""), "请求未成功，请重试。");
 });
