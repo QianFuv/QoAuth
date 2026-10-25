@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -49,6 +50,7 @@ func run(arguments []string, input io.Reader, output io.Writer) error {
 	confirm := flags.Bool("confirm", false, "Confirm recovery/rotation; restore requires the old issuer to remain stopped")
 	snapshot := flags.String("snapshot", "", "New snapshot directory for backup, existing snapshot for restore")
 	restoreReviewed := flags.Bool("restore-reviewed", false, "Confirm stopped old issuer and review of rolled-back users, clients and RP sessions")
+	batch := flags.Int("batch-size", 128, "Maximum cleanup rows per table (1-256), one transaction")
 	if err := flags.Parse(arguments); err != nil {
 		return err
 	}
@@ -58,8 +60,8 @@ func run(arguments []string, input io.Reader, output io.Writer) error {
 	if *directory == "" {
 		return errors.New("--data-dir is required; no automatic initialization")
 	}
-	if command != "init" && command != "recover-owner" && command != "recover-user" && command != "serve" && command != "rotate-signing" && command != "backup" && command != "restore" {
-		return errors.New("expected init, serve, recover-owner, recover-user, rotate-signing, backup or restore")
+	if command != "init" && command != "recover-owner" && command != "recover-user" && command != "serve" && command != "rotate-signing" && command != "backup" && command != "restore" && command != "cleanup" {
+		return errors.New("expected init, serve, recover-owner, recover-user, rotate-signing, backup, restore or cleanup")
 	}
 	ctx := context.Background()
 	if command == "restore" {
@@ -164,6 +166,13 @@ func run(arguments []string, input io.Reader, output io.Writer) error {
 	}
 	if err = database.CheckInstallation(ctx, keys.Binding()); err != nil {
 		return err
+	}
+	if command == "cleanup" {
+		counts, err := database.Cleanup(ctx, *batch)
+		if err != nil {
+			return errors.New("cleanup failed; authentication data remains transactionally protected")
+		}
+		return json.NewEncoder(output).Encode(counts)
 	}
 	if command == "recover-owner" || command == "recover-user" {
 		if !*confirm {

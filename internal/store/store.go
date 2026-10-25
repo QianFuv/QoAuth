@@ -33,8 +33,11 @@ var limitsMigration string
 //go:embed migrations/005.sql
 var maintenanceMigration string
 
+//go:embed migrations/006.sql
+var retentionMigration string
+
 func migrationScripts() []string {
-	return []string{migration, identityMigration, authenticationMigration, limitsMigration, maintenanceMigration}
+	return []string{migration, identityMigration, authenticationMigration, limitsMigration, maintenanceMigration, retentionMigration}
 }
 
 var (

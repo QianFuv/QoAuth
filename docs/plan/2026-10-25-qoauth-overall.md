@@ -496,7 +496,7 @@ Baseline is clean main `15e2f421c522113d4529e3872710fda512174d7c`.
 | N2 | Private installation lock, shared CLI lifecycle, isolated process tests | feat(storage): serialize local installation operations | Done; identifiable by exact message |
 | N3 | Persistent signing rotation and OP verification window, restart/interruption tests | feat(keys): rotate signing keys with bounded overlap | Done; identifiable by exact message |
 | N4 | Consistent backup, new-directory restore, restricted recovery and signed-token quarantine | feat(maintenance): add isolated backup and restore | Done; identifiable by exact message |
-| N5 | Bounded dependency-aware state and activity cleanup, failure regressions | feat(storage): bound maintenance without losing replay evidence | Pending |
+| N5 | Bounded dependency-aware state and activity cleanup, failure regressions | feat(storage): bound maintenance without losing replay evidence | Done; identifiable by exact message |
 | N6 | Actual checks, operational instructions and bounded remaining product/release list | docs(validation): record M2.2 maintenance evidence | Pending |
 
 Verification reuses unchanged M2.1 UI evidence; no UI redesign is planned. Required
@@ -560,3 +560,19 @@ require their dependent applications disabled first; resource permissions are
 rechecked inside the registration transaction. No general policy/approval system
 was added. Browser confirmation of this small form option is consolidated in N6;
 production API tests already cover credential replacement and stale scope rejection.
+
+N5 evidence: targeted store/maintenance/CLI tests and scoped vet pass. Cleanup is
+an explicit stopped-service command, one transaction with 1-256 rows per table,
+default 128. Tokens require an expired grant and no future token in that family;
+then grants, requests and unreferenced sessions can be removed in dependency order.
+Activity retains 30 days separately. Indexes support expiry/reference predicates.
+An oversized family progresses across batches; an expired browser cookie supporting
+a live refresh family survives. Deferred COMMIT and real SQLITE_FULL (temporary
+max_page_count limit, no host disk pressure) leave no partial cleanup. Initial test
+failures were a driver error-string assumption and a null synthetic payload; tests
+now check SQLite error code 13 and a valid non-null payload.
+
+Retention does not change baseline replay semantics: still-valid consumed credentials
+revoke their family on reuse; expired ancestors are rejected before replay handling
+and do not revoke live successors. Their retained rows are not claimed as evidence
+of family-lifetime replay detection. No daemon or persistent schedule was created.
