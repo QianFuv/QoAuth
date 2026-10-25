@@ -133,15 +133,24 @@ func (storage *Store) Session(ctx context.Context, handle string) (Session, erro
 }
 func (storage *Store) AnonymousSession(ctx context.Context) (string, error) {
 	handle := NewHandle()
+	admitted := false
 	err := storage.transaction(ctx, func(tx *sql.Tx) error {
 		if err := pruneAnonymous(ctx, tx); err != nil {
 			return err
 		}
 		result, err := tx.ExecContext(ctx, `INSERT INTO browser_sessions(digest,csrf,expires) SELECT ?,?,? WHERE (SELECT count(*) FROM browser_sessions WHERE user_id IS NULL)<4096`, Hash(handle), NewHandle(), time.Now().Add(10*time.Minute).Unix())
-		return one(result, err)
+		if err != nil {
+			return err
+		}
+		count, err := result.RowsAffected()
+		admitted = count == 1
+		return err
 	})
 	if err != nil {
 		return "", err
+	}
+	if !admitted {
+		return "", ErrInvalid
 	}
 	return handle, nil
 }

@@ -306,3 +306,14 @@ Atomic limits cap anonymous sessions at 4096, login transactions at 2048 globall
 and 16 per browser; creation prunes at most 64 expired rows of each kind.
 Forty-four scoped tests pass, including two-connection contention and independent
 client allowances behind one proxy. Real proxy/network configuration was not changed.
+
+Second independent review, Astra/xhigh/default at 9cf4784, found one remaining
+P1: denied admission rolled back bounded expiry cleanup, so an old oversized
+backlog could never recover. `fix(storage): retain cleanup when admission is denied`
+changes only store admission/pruning behavior, its tests and this record under A3.
+Cleanup now commits before returning the quota error, while the admission check and
+insert stay atomic. Regressions cover 4300 expired anonymous sessions, 2200 expired
+requests and a per-browser expired quota behind another browser's cleanup batch.
+The complete scoped race run passes 79 tests/subtests in seven packages (three
+explicit helper/manual-harness skips); later UI/RP corrections are included in that
+working-tree verification. Review reports are static evidence, not test execution.

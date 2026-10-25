@@ -58,3 +58,64 @@ func TestAnonymousStateHasAtomicQuotasAndBoundedReclamation(t *testing.T) {
 		t.Fatal("cleanup batch unbounded or incorrect", count)
 	}
 }
+
+func TestRejectedAdmissionStillCommitsBacklogCleanup(t *testing.T) {
+	storage, _ := fixture(t)
+	if _, err := storage.db.Exec(`WITH RECURSIVE counter(n) AS (VALUES(1) UNION ALL SELECT n+1 FROM counter WHERE n<4300) INSERT INTO browser_sessions(digest,csrf,expires) SELECT 'old-'||n,'synthetic',0 FROM counter`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := storage.AnonymousSession(t.Context()); err == nil {
+		t.Fatal("admission exceeded capacity")
+	}
+	var count int
+	if err := storage.db.QueryRow(`SELECT count(*) FROM browser_sessions`).Scan(&count); err != nil || count != 4236 {
+		t.Fatal("quota denial rolled back cleanup", count)
+	}
+	for range 3 {
+		_, _ = storage.AnonymousSession(t.Context())
+	}
+	handle, err := storage.AnonymousSession(t.Context())
+	if err != nil {
+		t.Fatal("anonymous backlog never recovered", err)
+	}
+	if _, err := storage.db.Exec(`WITH RECURSIVE counter(n) AS (VALUES(1) UNION ALL SELECT n+1 FROM counter WHERE n<2200) INSERT INTO login_requests(id,client_id,browser_digest,payload,expires) SELECT 'old-'||n,'rp','old-browser','{}',0 FROM counter`); err != nil {
+		t.Fatal(err)
+	}
+	request := LoginRequest{ID: NewHandle(), ClientID: "rp", Browser: Hash(handle), Payload: []byte(`{}`), Expires: time.Now().Add(time.Minute).Unix()}
+	if err := storage.CreateLogin(t.Context(), request); err == nil {
+		t.Fatal("request quota exceeded")
+	}
+	if err := storage.db.QueryRow(`SELECT count(*) FROM login_requests`).Scan(&count); err != nil || count != 2136 {
+		t.Fatal("request denial rolled back cleanup", count)
+	}
+	for range 3 {
+		request.ID = NewHandle()
+		_ = storage.CreateLogin(t.Context(), request)
+	}
+	request.ID = NewHandle()
+	if err := storage.CreateLogin(t.Context(), request); err != nil {
+		t.Fatal("request backlog never recovered", err)
+	}
+}
+
+func TestExpiredBrowserQuotaBehindAnotherCleanupBatch(t *testing.T) {
+	storage, _ := fixture(t)
+	handle, err := storage.AnonymousSession(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := storage.db.Exec(`WITH RECURSIVE counter(n) AS (VALUES(1) UNION ALL SELECT n+1 FROM counter WHERE n<100) INSERT INTO login_requests(id,client_id,browser_digest,payload,expires) SELECT 'older-'||n,'rp','another-browser','{}',0 FROM counter`); err != nil {
+		t.Fatal(err)
+	}
+	for range 16 {
+		if _, err := storage.db.Exec(`INSERT INTO login_requests(id,client_id,browser_digest,payload,expires) VALUES(?,'rp',?,'{}',1)`, NewHandle(), Hash(handle)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	request := LoginRequest{ID: NewHandle(), ClientID: "rp", Browser: Hash(handle), Payload: []byte(`{}`), Expires: time.Now().Add(time.Minute).Unix()}
+	_ = storage.CreateLogin(t.Context(), request)
+	request.ID = NewHandle()
+	if err := storage.CreateLogin(t.Context(), request); err != nil {
+		t.Fatal("expired per-browser quota never cleared", err)
+	}
+}

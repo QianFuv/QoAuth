@@ -17,13 +17,23 @@ type LoginRequest struct {
 }
 
 func (storage *Store) CreateLogin(ctx context.Context, request LoginRequest) error {
-	return storage.transaction(ctx, func(tx *sql.Tx) error {
+	admitted := false
+	err := storage.transaction(ctx, func(tx *sql.Tx) error {
 		if err := pruneAnonymous(ctx, tx); err != nil {
 			return err
 		}
 		result, err := tx.ExecContext(ctx, `INSERT INTO login_requests(id,client_id,browser_digest,payload,expires) SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM browser_sessions WHERE digest=? AND revoked=0 AND expires>?) AND (SELECT count(*) FROM login_requests WHERE browser_digest=?)<16 AND (SELECT count(*) FROM login_requests)<2048`, request.ID, request.ClientID, request.Browser, request.Payload, request.Expires, request.Browser, time.Now().Unix(), request.Browser)
-		return one(result, err)
+		if err != nil {
+			return err
+		}
+		count, err := result.RowsAffected()
+		admitted = count == 1
+		return err
 	})
+	if err == nil && !admitted {
+		return ErrInvalid
+	}
+	return err
 }
 
 func pruneAnonymous(ctx context.Context, tx *sql.Tx) error {
