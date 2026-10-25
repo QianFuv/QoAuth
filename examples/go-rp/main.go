@@ -90,15 +90,25 @@ func main() {
 	}
 }
 func (app *demo) cookie(response http.ResponseWriter, value string) {
-	http.SetCookie(response, &http.Cookie{Name: "qoauth_rp", Value: value, Path: "/", HttpOnly: true, Secure: app.secure, SameSite: http.SameSiteLaxMode, MaxAge: 900})
+	http.SetCookie(response, &http.Cookie{Name: app.cookieName(), Value: value, Path: "/", HttpOnly: true, Secure: app.secure, SameSite: http.SameSiteLaxMode, MaxAge: 900})
+}
+func (app *demo) cookieName() string {
+	if app.secure {
+		return "__Host-qoauth_rp"
+	}
+	return "qoauth_dev_rp"
 }
 func (app *demo) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 	app.mu.Lock()
 	defer app.mu.Unlock()
 	response.Header().Set("Cache-Control", "no-store")
-	response.Header().Set("Referrer-Policy", "no-referrer")
+	response.Header().Set("Referrer-Policy", "strict-origin")
 	response.Header().Set("X-Content-Type-Options", "nosniff")
-	response.Header().Set("Content-Security-Policy", "default-src 'none'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'")
+	logoutOrigin := ""
+	if target, err := url.Parse(app.logout); err == nil && target.Host != "" {
+		logoutOrigin = target.Scheme + "://" + target.Host
+	}
+	response.Header().Set("Content-Security-Policy", "default-src 'none'; form-action 'self' "+logoutOrigin+"; frame-ancestors 'none'; base-uri 'none'")
 	request.Body = http.MaxBytesReader(response, request.Body, 8192)
 	now := time.Now()
 	for key, transaction := range app.transactions {
@@ -111,7 +121,7 @@ func (app *demo) ServeHTTP(response http.ResponseWriter, request *http.Request) 
 			delete(app.sessions, key)
 		}
 	}
-	cookie, _ := request.Cookie("qoauth_rp")
+	cookie, _ := request.Cookie(app.cookieName())
 	handle := ""
 	if cookie != nil {
 		handle = cookie.Value
@@ -168,7 +178,7 @@ func (app *demo) ServeHTTP(response http.ResponseWriter, request *http.Request) 
 		session.Token = token
 		app.sessions[handle] = session
 		info, err := app.provider.UserInfo(request.Context(), oauth2.StaticTokenSource(token))
-		if err != nil {
+		if err != nil || info.Subject != session.Subject {
 			delete(app.sessions, handle)
 			http.Error(response, "provider no longer accepts this session", 401)
 			return

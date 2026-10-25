@@ -20,3 +20,13 @@ func TestProtocolPathsNeverFallBackToHtml(t *testing.T) {
 		t.Fatal("missing embedded bundle or CSP")
 	}
 }
+
+func TestHtmlPreservesValidatedLogoutFormTarget(t *testing.T) {
+	response := httptest.NewRecorder()
+	policy := "default-src 'none'; form-action 'self' https://rp.example.test; frame-ancestors 'none'"
+	response.Header().Set("Content-Security-Policy", policy)
+	Handler().ServeHTTP(response, httptest.NewRequest("GET", "/", nil))
+	if response.Header().Get("Content-Security-Policy") != policy || response.Header().Get("Referrer-Policy") != "strict-origin" {
+		t.Fatal("native logout form loses its validated target or canonical Origin")
+	}
+}

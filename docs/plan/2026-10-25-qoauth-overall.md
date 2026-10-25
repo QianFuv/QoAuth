@@ -317,3 +317,13 @@ requests and a per-browser expired quota behind another browser's cleanup batch.
 The complete scoped race run passes 79 tests/subtests in seven packages (three
 explicit helper/manual-harness skips); later UI/RP corrections are included in that
 working-tree verification. Review reports are static evidence, not test execution.
+
+Browser/client correction (A3 scope): `fix(oidc): preserve secure browser logout interoperability`
+covers the Go RP, OP/static response headers, their regression tests and this record.
+The RP now binds UserInfo sub to the verified ID-token subject, uses HTTPS __Host-
+cookies, and tests successful callback/refresh/logout plus nonce/subject failures.
+Chrome showed that no-referrer made native form Origin null. Strict-origin keeps
+URLs/credentials out of Referer while preserving canonical Origin checks. Logout
+CSP allows only self plus the validated redirect origin; static HTML preserves it.
+The final Chrome flow reached the registered signed-out page and /profile then
+returned sign-in-required. These changes are covered by the 79-case race run.

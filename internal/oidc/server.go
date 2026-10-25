@@ -126,7 +126,7 @@ func (s *Server) ServeHTTP(response http.ResponseWriter, request *http.Request) 
 	request = request.WithContext(op.ContextWithIssuer(request.Context(), s.config.Issuer))
 	response.Header().Set("Cache-Control", "no-store")
 	response.Header().Set("X-Content-Type-Options", "nosniff")
-	response.Header().Set("Referrer-Policy", "no-referrer")
+	response.Header().Set("Referrer-Policy", "strict-origin")
 	response.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
 	request.Body = http.MaxBytesReader(response, request.Body, 64<<10)
 	origin, _ := url.Parse(s.config.Issuer)
@@ -190,6 +190,13 @@ func (s *Server) ServeHTTP(response http.ResponseWriter, request *http.Request) 
 			http.Error(response, "invalid logout context", 400)
 			return
 		}
+		redirect, err := url.Parse(logout.RedirectURI)
+		if err != nil {
+			http.Error(response, "invalid logout redirect", 400)
+			return
+		}
+		policy := response.Header().Get("Content-Security-Policy")
+		response.Header().Set("Content-Security-Policy", strings.Replace(policy, "form-action 'self'", "form-action 'self' "+redirect.Scheme+"://"+redirect.Host, 1))
 		if request.Method == http.MethodGet {
 			copy := request.Clone(request.Context())
 			copy.URL.Path = "/"
