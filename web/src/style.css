@@ -9,7 +9,7 @@ html body {
   --line: #e6e8ed;
   --line-strong: #d4d8df;
   --muted: #5b6270;
-  --subtle: #8a909b;
+  --subtle: #6b7280;
   --blue: #2457f5;
   --blue-strong: #1a46d6;
   --blue-soft: #eef3ff;
@@ -159,7 +159,7 @@ html body .semi-tag { font-weight: 500; }
 .console { min-height: 100vh; display: grid; grid-template-columns: 252px minmax(0, 1fr); background: var(--canvas); }
 .console-sidebar { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; background: var(--paper); border-right: 1px solid var(--line); }
 .console-sidebar-brand { padding: 22px 20px 18px; }
-.console-nav-label { margin: 8px 20px 4px; font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .08em; color: var(--subtle); }
+.console-nav-label { margin: 8px 20px 4px; font-size: 12px; font-weight: 650; text-transform: uppercase; letter-spacing: .08em; color: var(--subtle); }
 .semi-navigation.console-nav { width: 100%; flex: 1; background: transparent; border-right: none; padding: 4px 8px; }
 .console-nav .semi-navigation-item { margin-bottom: 2px; border-radius: var(--radius-control); font-weight: 550; }
 .console-nav .semi-navigation-item-selected { background: var(--blue-soft); }
@@ -258,10 +258,10 @@ html body .semi-tag { font-weight: 500; }
   .form-actions, .banner-actions { row-gap: 20px; }
 }
 
-@keyframes fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-.enter { animation: fade-in .32s var(--ease-out) both; }
 /* Motion: one-shot entrances and short feedback only. */
 @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.enter { animation: fade-in .32s var(--ease-out) both; }
 .console-page > .enter:nth-child(2) { animation-delay: .04s; }
 .console-page > .enter:nth-child(3) { animation-delay: .08s; }
 .console-page > .enter:nth-child(n+4) { animation-delay: .12s; }

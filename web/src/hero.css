@@ -88,7 +88,7 @@
 .terminal pre { margin: 0; padding: 22px 22px 18px; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
 .terminal-line { display: block; margin-bottom: 6px; }
 .terminal-prompt { color: #8eaaff; user-select: none; }
-.terminal-note { color: rgba(255,255,255,.42); }
+.terminal-note { color: rgba(255,255,255,.6); }
 .check-list { list-style: none; margin: 28px 0 0; padding: 0; display: grid; gap: 16px; }
 .check-list li { display: flex; gap: 14px; align-items: flex-start; font-size: 16px; line-height: 1.55; color: var(--ink-2); }
 .check-list svg { flex: none; margin-top: 3px; color: var(--blue); }
