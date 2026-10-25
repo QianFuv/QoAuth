@@ -912,3 +912,34 @@ A5 logical commits: f0e2227 authorization, d50d81d policy, 6f4499e reset UI,
 review correction, 5312400 quality harnesses, 5d56cd5 packaging, 826200d preview
 provenance correction, and the current docs(validation): close bounded delivery
 checks evidence commit. Main only; no branch/worktree, push, release or deployment.
+
+## Platform validation clarification and execution (A6)
+
+The actual parent message beginning "已审核当前交付，功能范围收口，不再加功能"
+accepts the product boundary and authorizes ordinary startup of installed Docker
+Desktop or existing Ubuntu WSL for local Linux/image building and isolated tests.
+It explicitly distinguishes that from installing components, enabling Windows
+features, elevation, changing network/security settings or service startup types.
+Those additional changes remain excluded, as do real credentials, image pushes,
+deployment and cleanup of unrelated images/containers/WSL data. Existing main-only
+logical commit instructions persist. The source license stays undecided.
+
+This supersedes the earlier blanket startup-permission interpretation. Inspection
+found clean main 6d9f87f; about 8.9 GiB free host RAM and an active Python process
+using about one CPU core. Work will run serially with low parallelism and bounded
+resources, not compete with research verification. Ubuntu started normally as its
+existing uid 1000 user through wsl.exe; its existing Docker engine was available,
+with no running containers and only an existing hello-world image. Docker Desktop
+need not be started. No sudo, installation or host configuration change occurred.
+
+| Task | Bounded scope / checks | Intended commit | State |
+|---|---|---|---|
+| P0 | Record A6, actual resource/runtime inspection and this checklist | docs(plan): record authorized platform validation | Done; this record's commit |
+| P1 | Execute Linux-native tests and final binary smoke on private ext4 temporary state; only necessary portability-test corrections | test(platform): validate isolated Linux execution | Pending |
+| P2 | Build existing image with CPU/memory limits; non-root/read-only/loopback TLS synthetic lifecycle, restart and maintenance; necessary recipe fixes only | test(container): verify isolated image lifecycle | Pending |
+| P3 | Actual image provenance/notices/SBOM and updated finite evidence; retain all unexecuted limits | docs(validation): record Linux and container evidence | Pending |
+
+No additional product feature is authorized. Existing Windows race/browser/security
+evidence is reusable for unchanged inputs; native checks must actually run before
+changing platform claims. Test resources get task-specific names and only those
+resources may be removed. Never prune or terminate unrelated host/container/WSL work.
