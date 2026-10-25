@@ -337,7 +337,7 @@ func (s *Server) interactionInfo(response http.ResponseWriter, request *http.Req
 		http.Error(response, "application unavailable", 400)
 		return
 	}
-	writeJSON(response, map[string]any{"request": login.ID, "application": app.Name, "scopes": data.Request.Scopes, "audiences": data.Resources, "needs_login": !s.eligible(request.Context(), session, data), "needs_consent": contains(data.Request.Prompt, "consent") || !s.hasConsent(request.Context(), session.UserID, data)})
+	writeJSON(response, map[string]any{"request": login.ID, "application": app.Name, "scopes": append([]string{}, data.Request.Scopes...), "audiences": append([]string{}, data.Resources...), "needs_login": !s.eligible(request.Context(), session, data), "needs_consent": contains(data.Request.Prompt, "consent") || !s.hasConsent(request.Context(), session.UserID, data)})
 }
 func (s *Server) complete(request *http.Request, login store.LoginRequest, data tokenData, explicitApproval bool) error {
 	session := currentSession(request.Context())

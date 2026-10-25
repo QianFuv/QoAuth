@@ -247,7 +247,7 @@ but execution only with temporary isolated synthetic credentials/databases.
 | U1 | This acceptance/execution record | docs(plan): record M2.1 implementation approval | Done: ef23df8 |
 | U2 | Password/TOTP/key primitives, SQLite identity/session/client transitions, dependency locks and tests | feat(identity): persist credentials and enforce atomic session security | Done: 788a4f6 |
 | U3 | Production config/CLI/OP, account/management APIs, Go RP, private-directory/store support and container command wiring | feat(auth): connect local accounts to standard OIDC sessions | Done: 0503b9d |
-| U4 | Embedded Semi login/MFA/account/admin screens and browser verification | feat(ui): add local authentication and management screens | Pending |
+| U4 | Embedded Semi screens, UI response contract and bounded browser harness | feat(ui): add local authentication and management screens | Done; commit follows |
 | U5 | Final security/build evidence, deployment limits and next bounded scope | docs(validation): record M2.1 authentication evidence | Pending |
 
 Mandatory checks extend V1-V6: secure cookie attributes and origin/CSRF binding;
@@ -327,3 +327,18 @@ URLs/credentials out of Referer while preserving canonical Origin checks. Logout
 CSP allows only self plus the validated redirect origin; static HTML preserves it.
 The final Chrome flow reached the registered signed-out page and /profile then
 returned sign-in-required. These changes are covered by the 79-case race run.
+
+U4 evidence: TypeScript/Vite build passed (274.37 kB JS, 52.96 kB CSS; gzip
+84.37/9.06 kB). The React review used the local react-best-practices skill for
+component/hooks/form checks; no frontend framework or dependency was added.
+T3 snapshot failed twice with `Preview automation snapshot timed out after 15000ms.`;
+Chrome fallback exercised password login, consent, the independent Go RP callback,
+UserInfo, confirmed RP/OP logout, rejection afterward, owner TOTP, user create/disable,
+public application registration/assignment and account/session rendering.
+Browser testing caught and fixed the protocol library's space-delimited scope
+serialization (UI requires arrays) and native logout response-header conflict.
+The final tested origin emitted no application-script console errors; installed
+Chrome extensions emitted their own CSP errors, and their settings were not changed.
+The harness is opt-in, test-only, bounded to ten minutes and cleans temporary state.
+All test servers/RP child processes were stopped; the Chrome tab was closed.
+Screenshot evidence is ignored `.cache/m21-admin.png`, containing synthetic state.

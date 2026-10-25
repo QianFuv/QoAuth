@@ -1,6 +1,7 @@
 package oidc
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/url"
 	"strings"
@@ -35,6 +36,22 @@ func TestDuplicateProtocolParametersAreRejected(t *testing.T) {
 				t.Fatalf("duplicate scope accepted: %d", status)
 			}
 		})
+	}
+}
+
+func TestInteractionUsesArraysForScopesAndEmptyAudiences(t *testing.T) {
+	test := newProduction(t)
+	test.configure()
+	memberBrowser, memberCsrf := test.browser, test.csrf
+	test.browser, test.csrf = test.adminBrowser, test.adminCsrf
+	app := store.Application{ID: "no-resource", Name: "No Resource", Public: true, Redirects: []string{test.server.URL + "/rp/callback"}, Scopes: []string{"openid", "profile", "offline_access", "notes.read"}}
+	test.api("/api/applications/create", map[string]any{"application": app}, 200)
+	test.browser, test.csrf = memberBrowser, memberCsrf
+	id, _, _, _ := test.begin(app.ID, "consent")
+	status, body, _ := test.request("GET", "/api/interaction?request="+id, nil, "")
+	var result struct{ Scopes, Audiences []string }
+	if status != 200 || json.Unmarshal([]byte(body), &result) != nil || len(result.Scopes) != 4 || result.Audiences == nil {
+		t.Fatal("interaction collection contract broken")
 	}
 }
 
