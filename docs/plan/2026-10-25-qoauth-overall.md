@@ -695,7 +695,7 @@ This supersedes the prior proposal wait. No further internal-plan approval is ne
 | C4 | Minimal bounded readiness with generic public status and store/key/install checks | feat(health): expose bounded readiness checks | Committed b240fc3 |
 | C5 | Second pinned RP implementation and focused local protocol checks | test(oidc): verify a second standard relying party | Committed 9c4855e |
 | C6 | Existing phase-version restore/upgrade drill, bounded load, browser/accessibility evidence | test(validation): exercise release closure scenarios | Committed 5312400 |
-| C7 | Versioned local binaries, graph/NOTICE/license/SBOM inventory and packaging script | build(distribution): assemble versioned local artifacts | Done; clean artifact build follows commit |
+| C7 | Versioned local binaries, graph/NOTICE/license/SBOM inventory and packaging script | build(distribution): assemble versioned local artifacts | Committed 5d56cd5; preview correction below |
 | C8 | Actual evidence, runbook and finite remaining gates; no next feature expansion | docs(validation): close bounded delivery checks | Pending |
 
 A5 authorizes necessary in-scope fixes and their separate logical commits; record
@@ -800,3 +800,15 @@ components counting the CSS theme and generated Vite helper supplements. These a
 artifact inventories, not a claim that whole dependency modules are linked. Clean final
 artifacts and binary scans are collected after this commit; validation archives under
 .cache/package-validation-531 are not final deliverables.
+
+C7 correction under A5: `fix(distribution): label every dirty preview explicitly`
+changes only preview provenance handling and this record. Independent static review
+found that --allow-dirty plus a clean checkout could package an older modified binary
+with a clean version and source archive. A local metadata-interposition regression
+reproduced that mismatch without changing checkout/binary bytes. Explicit preview mode
+now always adds .dirty and excludes the source archive; the same regression passes.
+Default final mode still requires clean checkout and unmodified artifact build settings.
+The first clean build was rejected because the local validation import created an
+untracked Python bytecode file; only that generated file/directory was removed, then
+the clean build passed. No provenance check was bypassed. A corrected clean revision
+will supersede the initial 5d56cd5 local package; no artifact is published.

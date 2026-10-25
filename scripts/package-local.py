@@ -163,7 +163,8 @@ def main():
     is_dirty = bool(execute("git", "status", "--porcelain").strip())
     if is_dirty and not args.allow_dirty:
         raise ValueError("Commit task changes before assembling versioned final artifacts")
-    version = "0.1.0-dev." + revision[:12] + (".dirty" if is_dirty else "")
+    is_preview = args.allow_dirty or is_dirty
+    version = "0.1.0-dev." + revision[:12] + (".dirty" if is_preview else "")
     destination = (args.output or ROOT / "dist" / version).resolve()
     if not destination.is_relative_to(ROOT) or destination.exists():
         raise ValueError("Output must be a new directory inside the workspace")
@@ -247,7 +248,7 @@ def main():
         artifacts.append({"path": archive.name, "sha256": digest(archive.read_bytes()), "bytes": archive.stat().st_size})
     build_inventory(destination / "build-development", modules, lock)
     source_archive = destination / f"qoauth-{version}-source.zip"
-    if not is_dirty:
+    if not is_preview:
         execute("git", "archive", "--format=zip", "--output=" + str(source_archive), revision)
         artifacts.append({"path": source_archive.name, "sha256": digest(source_archive.read_bytes()), "bytes": source_archive.stat().st_size})
     (destination / "RELEASE-GATES.txt").write_text(RELEASE_GATES, encoding="utf-8")
