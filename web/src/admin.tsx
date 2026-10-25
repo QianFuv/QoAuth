@@ -16,6 +16,7 @@ import Empty from "@douyinfe/semi-ui/lib/es/empty";
 import Timeline from "@douyinfe/semi-ui/lib/es/timeline";
 import Collapsible from "@douyinfe/semi-ui/lib/es/collapsible";
 import Toast from "@douyinfe/semi-ui/lib/es/toast";
+import Typography from "@douyinfe/semi-ui/lib/es/typography";
 import { IllustrationFailure, IllustrationNoContent } from "@douyinfe/semi-illustrations";
 import { IconApps, IconChevronDown, IconChevronUp, IconHistory, IconKey, IconLock, IconPlus, IconRefresh, IconShield, IconUserGroup } from "@douyinfe/semi-icons";
 import { getJson, postJson, type Account, type Activity, type Application, type SessionState } from "./api";
@@ -109,7 +110,7 @@ export function AdminPanel({ session, run, busy, section }: AdminProps) {
   </div>;
   if (section === "activity") return <div className="console-page">
     <PageHeader eyebrow="Administration" title="Activity" description="The latest security events recorded by this installation." />
-    <ActivityTable activity={activity} />
+    <ActivityTable activity={activity} users={users} apps={apps} />
     {sharedSheets}
   </div>;
   const activeApps = apps.filter(app => app.enabled);
@@ -129,7 +130,7 @@ export function AdminPanel({ session, run, busy, section }: AdminProps) {
     </div>
     <div className="panel-grid">
       <Panel title="Recent activity" description="Event names and account identifiers only — never credentials." toolbar={<Button theme="borderless" onClick={() => navigate("/admin#activity")}>View all</Button>}>
-        {activity.length ? <Timeline className="activity-timeline">{activity.slice(0, 6).map((event, index) => <Timeline.Item key={`${event.time}-${index}`} time={formatTime(event.time)}><span className="activity-action">{event.action}</span> <code className="activity-subject">{event.subject}</code></Timeline.Item>)}</Timeline> : <Empty image={<IllustrationNoContent />} description="No activity recorded yet." />}
+        {activity.length ? <Timeline className="activity-timeline">{activity.slice(0, 6).map((event, index) => <Timeline.Item key={`${event.time}-${index}`} time={formatTime(event.time)}><span className="activity-action">{event.action}</span> <SubjectLabel subject={event.subject} users={users} apps={apps} /></Timeline.Item>)}</Timeline> : <Empty image={<IllustrationNoContent />} description="No activity recorded yet." />}
       </Panel>
       <Panel title="Applications" description="Registered clients and resource APIs." toolbar={<Button theme="borderless" onClick={() => navigate("/admin#applications")}>Manage</Button>}>
         {apps.length ? <ul className="mini-list">{apps.slice(0, 6).map(app => <li key={app.id}><div><strong>{app.name}</strong><code>{app.id}</code></div>{app.enabled ? <Tag color="green" size="small">Active</Tag> : <Tag color="grey" size="small">Disabled</Tag>}</li>)}</ul>
@@ -211,15 +212,36 @@ function ApplicationsTable({ apps, busy, onDisable, onReview }: { apps: Applicat
   </Panel>;
 }
 
+/**
+ * Show an activity subject by a name the administration lists already provide.
+ *
+ * Users resolve to usernames and applications to names; the opaque value is
+ * shortened to eight characters with the full value available to copy.
+ *
+ * @param props - The recorded subject and the loaded users and applications.
+ * @returns A compact subject label.
+ */
+function SubjectLabel({ subject, users, apps }: { subject: string; users: Account[]; apps: Application[] }) {
+  if (subject === "host") return <span className="subject"><span className="subject-name">Host maintenance</span></span>;
+  const application = apps.find(app => app.id === subject);
+  if (application) return <span className="subject"><span className="subject-name">{application.name}</span><code className="subject-id">{application.id}</code></span>;
+  const user = users.find(account => account.id === subject);
+  const shortId = subject.length > 10 ? subject.slice(0, 8) + "…" : subject;
+  return <span className="subject">
+    {user ? <span className="subject-name">{user.username}</span> : null}
+    <Typography.Text className="subject-id" copyable={{ content: subject, copyTip: "Copy full ID", successTip: "Copied" }}><code title={subject}>{user ? shortId : "ID " + shortId}</code></Typography.Text>
+  </span>;
+}
+
 /** Latest activity events with pagination. */
-function ActivityTable({ activity }: { activity: Activity[] }) {
+function ActivityTable({ activity, users, apps }: { activity: Activity[]; users: Account[]; apps: Application[] }) {
   const isCompact = useMediaQuery(COMPACT_QUERY);
   const empty = <Empty image={<IllustrationNoContent />} description="No activity recorded yet." />;
   return <Panel title="Security events" description="Activity records contain event names and account identifiers, never credentials.">
-    {isCompact ? <List className="stack-list" dataSource={activity.slice(0, 50)} emptyContent={empty} renderItem={(event: Activity) => <List.Item main={<div className="stack-item"><strong>{event.action}</strong><code className="wrap-anywhere">{event.subject}</code><span>{formatTime(event.time)}</span></div>} />} />
+    {isCompact ? <List className="stack-list" dataSource={activity.slice(0, 50)} emptyContent={empty} renderItem={(event: Activity) => <List.Item main={<div className="stack-item"><strong>{event.action}</strong><SubjectLabel subject={event.subject} users={users} apps={apps} /><span>{formatTime(event.time)}</span></div>} />} />
       : <Table className="data-table" rowKey={(event?: Activity) => event ? `${event.time}-${event.action}-${event.subject}` : ""} pagination={activity.length > 15 ? { pageSize: 15 } : false} dataSource={activity} empty={empty} columns={[
           { title: "Event", dataIndex: "action", render: (value: string) => <span className="activity-action">{value}</span> },
-          { title: "Subject", dataIndex: "subject", render: (value: string) => <code className="wrap-anywhere">{value}</code> },
+          { title: "Subject", dataIndex: "subject", render: (value: string) => <SubjectLabel subject={value} users={users} apps={apps} /> },
           { title: "Time", dataIndex: "time", width: 200, render: (value: number) => formatTime(value) },
         ]} />}
   </Panel>;

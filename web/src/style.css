@@ -226,7 +226,9 @@ html body .semi-tag { font-weight: 500; }
 .mini-list code { font-size: 12px; color: var(--subtle); overflow-wrap: anywhere; }
 .activity-timeline { padding-top: 4px; }
 .activity-action { font-weight: 600; }
-.activity-subject { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.subject { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; min-width: 0; vertical-align: middle; }
+.subject-name { font-weight: 550; color: var(--ink-2); overflow-wrap: anywhere; }
+.subject-id, .subject-id code { font-size: 12px; color: var(--muted); white-space: nowrap; }
 .detail-grid { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 10px 20px; margin: 4px 0; font-size: 13px; }
 .detail-grid dt { color: var(--subtle); font-weight: 600; }
 .detail-grid dd { margin: 0; min-width: 0; }
