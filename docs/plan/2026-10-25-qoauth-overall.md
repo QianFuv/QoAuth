@@ -3,9 +3,9 @@
 Protocol Version: 2026-09-05
 Protocol Revision: autonomous-execution-git-flow-v2
 
-Revision 5, 2026-10-25. Status: M1 accepted; M2.1 implementation and available local
-verification complete, submitted for parent acceptance. Parent A3 authorized this
-core implementation and its logical local commits. Linux native/image runs remain
+Revision 6, 2026-10-25. Status: M2.1 accepted; M2.2 implementation authorized by A4
+and in progress. Parent A4 accepts protected plaintext key custody and the minimal
+maintenance scope below. Linux native/image runs remain
 unverified. There is no outstanding end-user approval gate for this scope. This is the single
 execution checklist; do not create another plan for each small step.
 
@@ -430,8 +430,8 @@ release gates are explicitly presented for parent review; no production-ready cl
 
 ## Proposed next slice for parent decision: M2.2 minimal maintenance
 
-This is a concrete proposal, not new implementation authorization. Parent owns the
-next decision; no final-user internal-plan approval wait is introduced. Continue
+Parent accepted this proposal in A4 below; no final-user internal-plan approval
+wait is introduced. Continue
 the same single checklist, one process/issuer/SQLite database, embedded UI and main.
 
 1. **Stopped-service backup and safe restore.** Add small local CLI commands and
@@ -479,3 +479,31 @@ would require a separate concrete action and authorization; do not silently inst
 or start system components. Until a permitted runtime exists, list those runtime
 checks as unexecuted. Second-RP/OIDF and final packaging gates remain visible release
 work, not a reason to add enterprise functions or claim M2.2 already validated them.
+
+## M2.2 authorization and execution (A4)
+
+The actual 2026-10-25 parent message beginning "已审阅 M2.1 交付及 M2.2 计划，批准这个最小运维闭环的代码实现与隔离合成测试"
+approves this scope and logical local main commits. It accepts keys.json protected
+by strict ownership/ACLs with encrypted TOTP in SQLite, requires consistent stopped
+backups, new-directory restore without source overwrite, signed-token invalidation,
+bounded signing overlap without AES changes, dependency-aware retention and explicit
+Linux/image gaps. It grants no real credential/installation/system/network action.
+Baseline is clean main `15e2f421c522113d4529e3872710fda512174d7c`.
+
+| Task | Bounded scope | Intended commit | State |
+|---|---|---|---|
+| N1 | This accepted execution record | docs(plan): record M2.2 maintenance approval | Done; identifiable by exact message |
+| N2 | Private installation lock, shared CLI lifecycle, isolated process tests | feat(storage): serialize local installation operations | In progress |
+| N3 | Persistent signing rotation and OP verification window, restart/interruption tests | feat(keys): rotate signing keys with bounded overlap | Pending |
+| N4 | Consistent backup, new-directory restore, restricted recovery and signed-token quarantine | feat(maintenance): add isolated backup and restore | Pending |
+| N5 | Bounded dependency-aware state and activity cleanup, failure regressions | feat(storage): bound maintenance without losing replay evidence | Pending |
+| N6 | Actual checks, operational instructions and bounded remaining product/release list | docs(validation): record M2.2 maintenance evidence | Pending |
+
+Verification reuses unchanged M2.1 UI evidence; no UI redesign is planned. Required
+new tests cover lock contention/process exit, unsafe files, backup integrity/version/
+binding, source preservation, restore revocation/owner restriction, fresh JWKS and
+cached-ID-token expiry boundaries, rotation restart/interruption/concurrency, and
+cleanup retention/commit failure. Run scoped Go tests/vet/race, source/binary scans,
+both target builds and Compose configuration validation. Native Linux/image runs
+remain unexecuted without an already usable permitted runtime. A4 permits necessary
+in-scope corrections and their logical commits; record each correction before use.
