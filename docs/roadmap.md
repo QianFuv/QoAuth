@@ -102,8 +102,10 @@ Remaining release gates and limits are separate from feature expansion:
   SQLite state, not large-database temporary-file pressure on scratch. Physical
   power-loss durability remains unverified. Native/image acceptance is now supported
   by actual runs; these limits are not missing startup permission or feature work.
-- **License decision:** QoAuth has no selected source license. Artifact NOASSERTION
-  is not permission to distribute. Preserve the shipped notices and review the
+- **License status:** QoAuth has no selected source license. Artifact NOASSERTION
+  grants no additional source license. The maintainer separately authorized the
+  first GitHub release; publication does not select an open-source license.
+  Preserve the shipped notices and review the
   recorded build-only optional-package gaps before redistributing build tools.
 - **Real installation:** trusted host directories, existing HTTPS proxy and issuer,
   accounts/keys and backup custody require a concrete installation review; none were
@@ -121,6 +123,15 @@ Passkeys, social/upstream OIDC, back-channel logout, machine clients and device
 flow are demand-driven follow-ups. SCIM/LDAP/SAML, tenancy, approval flows and
 cluster infrastructure are outside the current roadmap, not postponed obligations.
 
-Use the existing overall-plan checklist for authorization history, file scopes,
-verification and logical commits; no new per-stage plan ceremony. Keep main,
-one logical change per commit, no branch/worktree, push, release or deployment.
+The historical local implementation used the overall-plan checklist. The separately
+approved first-release contract authorizes its bounded GitHub publication. Keep
+main and one logical change per commit; no branch/worktree change or deployment.
+
+## First-version publication
+
+Version 0.1.0 uses LitRadar-style detect-changes, quality, build-acceptance and
+publish stages. The accepted Windows ZIP and Linux tar.gz preserve SPDX, source
+identity and third-party/font notices, with SHA256SUMS. Publication is explicitly
+dispatched only after same-SHA hosted acceptance; the Linux container gate remains
+a test fixture, with no registry publication or service deployment. A public
+repository/release does not replace the installation review or other limits above.

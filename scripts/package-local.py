@@ -1,4 +1,4 @@
-"""Assemble local preview binaries, artifact-specific SPDX inventories and original notices."""
+"""Assemble source-bound binaries, SPDX inventories and original dependency notices."""
 import argparse
 import base64
 import datetime
@@ -8,6 +8,7 @@ import pathlib
 import re
 import shutil
 import subprocess
+import tarfile
 import urllib.parse
 import uuid
 import zipfile
@@ -21,15 +22,68 @@ LIBC_EXCERPTS = {
     "libc_windows.go": b"Copyright (c) 1990 The Regents of the University of California.",
     "ccgo_linux_amd64.go": b"Copyright (c) 2003 Poul-Henning Kamp",
 }
-RELEASE_GATES = """LOCAL PREVIEW ONLY - NOT PUBLISHED OR CERTIFIED
-QoAuth source-license decision is required before distribution; NOASSERTION is not a license grant.
-Native Linux and Docker image execution have not been verified. No service was started to obtain a pass.
+RELEASE_GATES = """SOURCE AND VERIFICATION LIMITS
+QoAuth has no selected source license. Maintainer-authorized publication grants no additional source license; NOASSERTION is not a license grant.
+Release acceptance is recorded by the exact-source CI run; packaging alone does not establish native or container execution.
 This binary inventory does not describe a built container or its certificate bundle/base-image provenance.
 Targeted OIDC checks and two Go RP implementations are not OIDF certification.
 Basic keyboard/labels/responsive checks are not a complete accessibility audit.
 Build/development-only licenses are inventoried separately; optional uninstalled packages are not claimed inspected.
 Whole-host or backup disclosure exposes keys.json; this package contains no installation data or credentials.
 """
+
+
+def release_version(value, revision, is_dirty, is_release):
+    """Resolve a version without allowing dirty bytes to claim a formal release.
+
+    Args:
+        value: The canonical VERSION text.
+        revision: The complete source revision.
+        is_dirty: Whether the working tree has changes.
+        is_release: Whether formal release packaging was requested.
+
+    Returns:
+        A stable release version or explicitly identified development version.
+    """
+    version = value.strip()
+    if not re.fullmatch(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)", version):
+        raise ValueError("VERSION must be a stable numeric version")
+    if is_release and is_dirty:
+        raise ValueError("A formal release requires a clean working tree")
+    return version if is_release else version + "-dev." + revision[:12] + (".dirty" if is_dirty else "")
+
+
+def validate_css_resources(payload, asset, asset_root, font_hashes):
+    """Permit only reviewed local WOFF2 resources referenced by embedded CSS.
+
+    Args:
+        payload: The stylesheet bytes.
+        asset: The stylesheet path.
+        asset_root: The embedded asset directory.
+        font_hashes: SHA-256 values of the reviewed source font shards.
+    """
+    for match in re.finditer(rb"url\s*\(\s*([^)]*?)\s*\)", payload, re.I):
+        relative = match.group(1).strip().strip(b"\"'").decode("utf-8")
+        if not re.fullmatch(r"(?:\./|/assets/)?[A-Za-z0-9_.-]+\.woff2", relative):
+            raise ValueError("Unreviewed CSS resource")
+        resource = ((asset_root / relative.lstrip("/")) if relative.startswith("/") else (asset.parent / relative)).resolve()
+        if not resource.is_relative_to(asset_root.resolve()) or not resource.is_file() or digest(resource.read_bytes()) not in font_hashes:
+            raise ValueError("CSS font resource is not covered by reviewed source hashes")
+
+
+def bundled_fonts():
+    """Return the reviewed source-shard hashes, rejecting an unexpected count.
+
+    Returns:
+        SHA-256 values for all 668 source font shards.
+    """
+    fonts = sorted((ROOT / "web/src/fonts").rglob("*.woff2"))
+    if len(fonts) != 668:
+        raise ValueError("Expected 668 reviewed font shards")
+    hashes = sorted(digest(font.read_bytes()) for font in fonts)
+    if digest(("\n".join(hashes) + "\n").encode()) != "2ef2c005f8e5c2e0d0dbc6d90aa90ea12d522779a2ed94a4503fe5943a13ed92":
+        raise ValueError("Reviewed font payloads changed")
+    return set(hashes)
 
 
 def execute(*arguments):
@@ -158,13 +212,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=pathlib.Path)
     parser.add_argument("--allow-dirty", action="store_true", help="Local packaging verification only; marks the version dirty")
+    parser.add_argument("--release", action="store_true", help="Require clean source and package the canonical VERSION")
     args = parser.parse_args()
     revision = execute("git", "rev-parse", "HEAD").strip()
     is_dirty = bool(execute("git", "status", "--porcelain").strip())
     if is_dirty and not args.allow_dirty:
         raise ValueError("Commit task changes before assembling versioned final artifacts")
     is_preview = args.allow_dirty or is_dirty
-    version = "0.1.0-dev." + revision[:12] + (".dirty" if is_preview else "")
+    version = release_version((ROOT / "VERSION").read_text(encoding="utf-8"), revision, is_preview, args.release)
     destination = (args.output or ROOT / "dist" / version).resolve()
     if not destination.is_relative_to(ROOT) or destination.exists():
         raise ValueError("Output must be a new directory inside the workspace")
@@ -179,6 +234,9 @@ def main():
     destination.mkdir(parents=True)
     created = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     artifacts = []
+    font_hashes = bundled_fonts()
+    assets_directory = destination / "assets"
+    assets_directory.mkdir()
     for platform in ("windows", "linux"):
         name = f"qoauth-{platform}-amd64" + (".exe" if platform == "windows" else "")
         binary = ROOT / "dist" / name
@@ -189,8 +247,9 @@ def main():
         data = binary.read_bytes()
         directory = destination / f"{platform}-amd64"
         directory.mkdir()
-        shutil.copyfile(binary, directory / name)
-        main_package = package("QoAuth", version, comment="Local preview. Source license undecided. Embedded frontend and Go dependencies below are artifact-specific.")
+        executable = "qoauth.exe" if platform == "windows" else "qoauth"
+        shutil.copyfile(binary, directory / executable)
+        main_package = package("QoAuth", version, comment="Source license undecided; no additional source license granted. Embedded frontend and Go dependencies below are artifact-specific.")
         main_package["checksums"] = [{"algorithm": "SHA256", "checksumValue": digest(data)}]
         components, notices = [main_package], []
         for dependency in build["Deps"]:
@@ -215,6 +274,10 @@ def main():
             component, records = add_npm(directory, entry, lock, entry.get("comment", "Build-emitted JS chunk inventory; tree-shaken portions only."))
             components.append(component)
             notices.extend(records)
+        font_directory = ROOT / "web/public/assets/licenses"
+        font_notices = [path.name for path in sorted(font_directory.iterdir()) if path.is_file()]
+        notices.extend(preserve_notices(directory, "JetBrainsLxgwNerdMono", "1.3", font_directory, "web/public/assets/licenses", font_notices))
+        components.append(package("JetBrainsLxgwNerdMono", "1.3", "https://github.com/lvbibir/JetBrainsLxgwNerdMono/releases/tag/v1.3", "OFL-1.1", "668 unchanged WOFF2 shards; version-specific source attribution is preserved in FONTS.md."))
         assets = []
         for asset in sorted((ROOT / "internal/webassets/dist").rglob("*")):
             if not asset.is_file() or any(part.startswith(".") for part in asset.relative_to(ROOT / "internal/webassets/dist").parts):
@@ -222,9 +285,11 @@ def main():
             payload = asset.read_bytes()
             if payload not in data:
                 raise ValueError("Frontend evidence does not match executable bytes")
-            if asset.suffix == ".css" and re.search(rb"url\s*\(", payload, re.I):
-                raise ValueError("New CSS assets require a provenance review")
-            assets.append({"path": asset.relative_to(ROOT / "internal/webassets/dist").as_posix(), "sha256": digest(payload), "bytes": len(payload)})
+            if asset.suffix == ".css":
+                validate_css_resources(payload, asset, ROOT / "internal/webassets/dist", font_hashes)
+            if asset.suffix == ".woff2" and digest(payload) not in font_hashes:
+                raise ValueError("Embedded font is not covered by reviewed source hashes")
+            assets.append({"path": asset.relative_to(ROOT / "internal/webassets/dist").as_posix(), "sha256": digest(payload), "bytes": len(payload), "offset": data.index(payload)})
         relations = [{"spdxElementId": "SPDXRef-DOCUMENT", "relatedSpdxElement": main_package["SPDXID"], "relationshipType": "DESCRIBES"}]
         relations.extend({"spdxElementId": main_package["SPDXID"], "relatedSpdxElement": component["SPDXID"], "relationshipType": "DEPENDS_ON"} for component in components[1:])
         document = {"spdxVersion": "SPDX-2.3", "dataLicense": "CC0-1.0", "SPDXID": "SPDXRef-DOCUMENT", "name": name + "-" + version, "documentNamespace": "https://qoauth.invalid/spdx/" + str(uuid.uuid4()), "creationInfo": {"creators": ["Tool: QoAuth-local-packager"], "created": created}, "packages": components, "relationships": relations}
@@ -234,21 +299,34 @@ def main():
         write_json(directory / "notice-index.json", notices)
         (directory / "THIRD_PARTY_NOTICES.txt").write_text("Original notices are retained byte-for-byte under LICENSES; notice-index.json maps source paths and hashes.\nModule-level aggregates may describe unused portions. Inline libc supplements are conservative, not symbol-level claims.\nGo module h1 values are recorded as module integrity, not archive SHA-256.\nSPDX NOASSERTION does not grant a license. See RELEASE-GATES.txt.\n", encoding="utf-8")
         (directory / "RELEASE-GATES.txt").write_text(RELEASE_GATES, encoding="utf-8")
-        manifest = {"version": version, "revision": revision, "build_settings": settings, "executable": name, "sha256": digest(data), "bytes": len(data), "go_dependency_modules": len(build["Deps"]), "frontend_components_with_supplements": len(entries), "embedded_assets": assets, "files": {path.relative_to(directory).as_posix(): digest(path.read_bytes()) for path in sorted(directory.rglob("*")) if path.is_file()}}
+        manifest = {"version": version, "revision": revision, "build_settings": settings, "executable": executable, "sha256": digest(data), "bytes": len(data), "go_dependency_modules": len(build["Deps"]), "frontend_components_with_supplements": len(entries), "embedded_assets": assets, "files": {path.relative_to(directory).as_posix(): digest(path.read_bytes()) for path in sorted(directory.rglob("*")) if path.is_file()}}
         write_json(directory / "manifest.json", manifest)
-        archive = destination / f"qoauth-{version}-{platform}-amd64.zip"
-        with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as zipped:
-            for path in sorted(directory.rglob("*")):
-                if path.is_file():
-                    member = zipfile.ZipInfo(path.relative_to(directory).as_posix())
-                    member.create_system = 3
-                    member.external_attr = (0o100755 if platform == "linux" and path.name == name else 0o100644) << 16
-                    member.compress_type = zipfile.ZIP_DEFLATED
-                    zipped.writestr(member, path.read_bytes())
-        artifacts.append({"path": archive.name, "sha256": digest(archive.read_bytes()), "bytes": archive.stat().st_size})
+        suffix = "windows_amd64.zip" if platform == "windows" else "linux_amd64.tar.gz"
+        archive = assets_directory / f"qoauth_{version}_{suffix}"
+        if platform == "windows":
+            with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as zipped:
+                for path in sorted(directory.rglob("*")):
+                    if path.is_file():
+                        member = zipfile.ZipInfo(path.relative_to(directory).as_posix())
+                        member.create_system = 3
+                        member.external_attr = 0o100644 << 16
+                        member.compress_type = zipfile.ZIP_DEFLATED
+                        zipped.writestr(member, path.read_bytes())
+        else:
+            with tarfile.open(archive, "w:gz") as zipped:
+                for path in sorted(directory.rglob("*")):
+                    if path.is_file():
+                        member = zipped.gettarinfo(str(path), arcname=path.relative_to(directory).as_posix())
+                        member.uid = member.gid = 0
+                        member.uname = member.gname = ""
+                        member.mode = 0o755 if path.name == executable else 0o644
+                        with path.open("rb") as source:
+                            zipped.addfile(member, source)
+        artifacts.append({"path": "assets/" + archive.name, "sha256": digest(archive.read_bytes()), "bytes": archive.stat().st_size})
+    (assets_directory / "SHA256SUMS").write_text("".join(item["sha256"] + "  " + pathlib.Path(item["path"]).name + "\n" for item in artifacts), encoding="utf-8")
     build_inventory(destination / "build-development", modules, lock)
     source_archive = destination / f"qoauth-{version}-source.zip"
-    if not is_preview:
+    if not is_preview and not args.release:
         execute("git", "archive", "--format=zip", "--output=" + str(source_archive), revision)
         artifacts.append({"path": source_archive.name, "sha256": digest(source_archive.read_bytes()), "bytes": source_archive.stat().st_size})
     (destination / "RELEASE-GATES.txt").write_text(RELEASE_GATES, encoding="utf-8")

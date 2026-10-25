@@ -68,7 +68,7 @@ match the earlier verified assets.
 
 ## Artifact inventories and preserved notices
 
-Final local version `0.1.0-dev.826200d48959` has separate Windows/Linux SPDX 2.3 JSON,
+The historical local version `0.1.0-dev.826200d48959` has separate Windows/Linux SPDX 2.3 JSON,
 build metadata, original license files, notice index and SHA-256 manifests. Each
 SBOM passes the official [SPDX 2.3.1 JSON schema](https://raw.githubusercontent.com/spdx/spdx-spec/v2.3.1/schemas/spdx-schema.json)
 with PowerShell Test-Json. Schema validity is not legal clearance. SPDX metadata's
@@ -85,8 +85,11 @@ The Vite [build.license](https://vite.dev/config/build-options.html#build-licens
 JSON uses emitted chunk provenance. The packager adds Semi theme CSS and Vite's
 generated modulepreload helper; it does not claim that full Vite runs in the browser.
 It compares embedded HTML/JS/CSS bytes to the actual executable. The dot-directory
-inventory is build evidence, not a publicly served UI route. No CSS URL assets were
-present. Official schema/docs and installed Vite 8.3.5 source were checked 2026-10-25.
+inventory is build evidence, not a publicly served UI route. That historical bundle
+had no CSS URL assets. Formal packaging now accepts only reviewed same-origin WOFF2
+resources, binds all 668 payloads to a fixed inventory hash, and preserves the
+version-matched font notices and OFL component. See [font provenance](font-licensing.md).
+Official schema/docs and installed Vite 8.3.5 source were checked 2026-10-25.
 
 Preserved supplements include OTP/Zitadel NOTICE, JOSE json/LICENSE, SQLite/libc
 third-party aggregates, SQLite public-domain text, three attributed libc inline
@@ -127,7 +130,10 @@ Image SPDX passes the official schema; archive/config-ID, all manifest/notice ha
 and outer ZIP integrity were checked. The notices accompany the docker-save archive;
 they are not copied inside the image. Preserve the full companion bundle. QoAuth's
 own license remains NOASSERTION pending a maintainer choice; no LICENSE file or
-release permission has been invented.
+additional source-license grant is invented. The maintainer separately authorized
+first-version publication. Formal releases include two source-bound platform archives
+and SHA256SUMS; GitHub supplies tag-based source archives. Existing local preview
+and image bundles above remain historical evidence, not current release artifacts.
 
 ## Protocol and storage shortlist
 

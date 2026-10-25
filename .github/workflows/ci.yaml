@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Exact VERSION to build or publish
+        required: true
+        type: string
+      source_run:
+        description: Successful same-SHA build run to publish; leave empty to build only
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  detect-changes:
+    name: Detect changes and release intent
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      mode: ${{ steps.context.outputs.mode }}
+      version: ${{ steps.context.outputs.version }}
+      source_run: ${{ steps.context.outputs.source_run }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.22.1
+      - name: Verify release contracts
+        id: contracts
+        run: |
+          node --test scripts/release.test.mjs
+          python3 scripts/package-release.test.py
+      - name: Resolve source and explicit publication intent
+        id: context
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          REQUESTED_VERSION: ${{ inputs.version }}
+          SOURCE_RUN: ${{ inputs.source_run }}
+        run: node scripts/release.mjs context
+      - name: Report detect-changes summary
+        if: always()
+        env:
+          CI_STAGE: detect-changes
+          CI_STATUS: ${{ job.status }}
+          CI_CHECKS: ${{ toJSON(steps) }}
+        run: node scripts/ci-report.mjs
+
+  frontend:
+    name: Frontend
+    needs: detect-changes
+    if: needs.detect-changes.outputs.mode != 'publish'
+    uses: ./.github/workflows/frontend.yaml
+
+  backend:
+    name: Backend
+    needs: [detect-changes, frontend]
+    if: needs.detect-changes.outputs.mode != 'publish'
+    uses: ./.github/workflows/backend.yaml
+    with:
+      web_artifact_id: ${{ needs.frontend.outputs.web_artifact_id }}
+
+  release-build:
+    name: Build acceptance
+    needs: [detect-changes, frontend, backend]
+    if: needs.detect-changes.outputs.mode == 'build'
+    uses: ./.github/workflows/release.yaml
+    with:
+      version: ${{ needs.detect-changes.outputs.version }}
+      web_artifact_id: ${{ needs.frontend.outputs.web_artifact_id }}
+
+  release-publish:
+    name: Publish
+    needs: detect-changes
+    if: needs.detect-changes.outputs.mode == 'publish'
+    permissions:
+      contents: write
+      actions: read
+    uses: ./.github/workflows/release.yaml
+    with:
+      version: ${{ needs.detect-changes.outputs.version }}
+      publish: true
+      source_run: ${{ needs.detect-changes.outputs.source_run }}

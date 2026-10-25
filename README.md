@@ -6,75 +6,70 @@ One Go process contains a React/TypeScript/Vite/Semi UI and uses one local SQLit
 database and one issuer. No external database, Redis, Node runtime or enterprise
 tenant/SCIM/LDAP/SAML infrastructure is required.
 
-**Status, 2026-10-25:** The approved lightweight product slice is implemented:
-local users, password/TOTP/recovery, sessions, applications/scopes/consent, OIDC
-code+S256, management UI/API and redacted activity. Maintenance includes installation
-locking, consistent backup, isolated restore/reconciliation, signing rotation and
-bounded cleanup. Final closure adds MFA-protected administrator password reset,
-disabled-application review, consistent password rules and bounded readiness.
-The real service is `cmd/qoauth`; `internal/fixture` is test-only and is not imported
-by it. All validation used temporary synthetic state. This is not a production
-readiness or OpenID certification claim.
+Version `0.1.0` includes local users, password/TOTP/recovery, sessions,
+applications/scopes/consent, OIDC code+S256 and a simplified-Chinese Semi UI.
+Maintenance includes installation locking, consistent backup, isolated restore,
+signing rotation and bounded cleanup. This is not an OpenID certification or a
+production deployment claim.
 
-Windows/Linux amd64 binaries and the Linux amd64 image build and run locally.
-Windows restart/maintenance and 135 race tests/subtests passed; native Ubuntu WSL2
-execution passed 130 tests/subtests (six skips), plus the final Linux binary smoke.
-The final image passed non-root/read-only storage, loopback HTTPS, standard Go RP,
-restart/logout and maintenance checks. Only temporary synthetic installations were
-used. Existing Ubuntu/Docker started normally; no component installation, elevation,
-host security/service-setting change, deployment or real access was performed.
+## Release and checks
 
-## Build and check
+[GitHub Releases](https://github.com/QianFuv/QoAuth/releases) provides
+`qoauth_0.1.0_windows_amd64.zip`, `qoauth_0.1.0_linux_amd64.tar.gz` and
+`SHA256SUMS`. Verify the downloaded archive before use. Each platform archive
+contains the executable, SPDX inventory, original third-party/font notices and
+source/build/file manifests. GitHub supplies source archives from the release tag.
+QoAuth has no selected source license; publication by its maintainer does not
+supply an additional source-license grant. Preserve all dependency notices.
 
-Use Go 1.26.10 and Node 24.22.1/npm 12.2.0; local packaging also uses Python 3.12.15.
-These tools were already available. Build assets first:
+Use Go 1.26.10, Node 24.22.1 and the locked npm dependencies; local packaging uses
+Python 3.12. Run these checks from the repository:
 
 ```powershell
 Push-Location web
 npm ci --ignore-scripts
+npm test
 npm run build
 Pop-Location
 $env:GOTOOLCHAIN = 'local'
 go test -timeout 180s ./cmd/... ./internal/... ./examples/...
 go vet ./cmd/... ./internal/... ./examples/...
+node --test scripts/release.test.mjs
+python scripts/package-release.test.py
 ```
 
-With an existing C compiler, run the same package set with `CGO_ENABLED=1` and
-`go test -timeout 180s -race`. Explicit paths avoid traversing `web/node_modules`.
-The final Windows race run passed 135 tests/subtests across eight packages, with
-six opt-in/helper skips. Process helpers run through their parent tests; browser and
-600-second load harnesses were also executed separately. Coreos and Zitadel RP flows
-pass against the production adapter. See [final evidence and limits](docs/plan/2026-10-25-qoauth-overall.md#final-bounded-delivery-evidence-2026-10-25).
+With an existing C compiler, also run the same Go package set with
+`CGO_ENABLED=1` and `go test -timeout 180s -race`. Explicit package paths avoid
+traversing node_modules. `node scripts/browser-check.mjs <new-output-directory>`
+uses installed Chromium and fresh synthetic state to verify real authentication,
+360/390/768/1440 layouts, network fonts with local fonts disabled, and blocked-font
+fallback. It removes its temporary credentials and profiles and reports no tokens.
 
-`scripts/build.ps1` builds both single-file executables and versioned local ZIPs,
-SPDX 2.3 SBOMs, original license/NOTICE files, hashes and an exact-commit source ZIP
-under ignored `dist/`. Use `-UseInstalledFrontend` to reuse already installed locked
-packages. Final packaging requires a clean checkout and matching unmodified binary
-build metadata; output directories must be new. Explicit `--allow-dirty` packaging
-is always labeled `.dirty` and never includes a clean source archive.
+From a clean committed checkout, `scripts/build.ps1 -UseInstalledFrontend -Release`
+builds both amd64 executables and formal platform archives under ignored `dist/`.
+The output directory must be new; use `-Output <new-path>` when repeating a build.
+Formal packaging rejects dirty source. Local preview packaging keeps an explicit
+development version; `--allow-dirty` never produces a formal release.
 
-No adjacent UI directory is required. Symbol tables remain for precise binary scans;
-debug information is omitted. The final local preview is
-[0.1.0-dev.826200d48959](dist/0.1.0-dev.826200d48959/manifest.json), built at
-`826200d48959bef3e23f554fc39f73ea1635a149`; subsequent evidence documentation does
-not relabel its source revision. Each platform directory contains its executable,
-SBOM, notices and manifest. `build-development/inventory.json` separates the wider
-build/test graph. The source ZIP includes Docker/Compose recipes and the Go RP
-example. These standalone artifacts retain their original source revision.
+The [CI workflow](.github/workflows/ci.yaml) follows four stages: detect-changes,
+quality, build-acceptance, publish. Reusable frontend/backend/release workflows
+retain native Go/race, real-browser and Linux container gates. The frontend is
+built and tested once, then transferred by immutable artifact ID and a complete
+source-bound hash inventory. Windows acceptance runs the same packaged bytes.
+The Linux image is an acceptance fixture, not a published registry artifact.
 
-The separate [Linux image bundle](dist/qoauth-0.1.0-dev.bcee155a2fcf-linux-image.zip)
-was built from clean `bcee155a2fcfc7803ecaaea03428359f1d476d5c`. Its
-[manifest](dist/0.1.0-dev.bcee155a2fcf-linux-image/manifest.json) binds the docker-save
-archive, image ID, build provenance, exact source ZIP, image-specific SPDX,
-original notices and CA source. Preserve the companion notices with the image;
-they are not embedded inside the scratch filesystem. No image was pushed or deployed.
+A push to main builds and checks only. After reviewing its successful CI run and
+all accepted archives, explicitly dispatch CI with the exact `version` and its
+`source_run` ID. Publication requires that run's complete same-SHA acceptance,
+rechecks all bytes and creates a new tag/Release without rebuilding. Existing
+tags/releases are never overwritten; an interrupted publication requires inspection
+before any retry. To rebuild accepted artifacts, start a new build-only dispatch
+rather than overwriting immutable artifacts in an existing run. Public downloads are rechecked after publication.
 
-`scripts/verify-linux.py` executes precompiled Linux test binaries on private native
-storage. `scripts/verify-container.py` exercises one supplied immutable image using
-an existing Docker engine, synthetic local TLS and task-owned containers/volume.
-It needs the compiled Go RP example and existing Python/OpenSSL, not host trust changes.
-See [A6 commands and evidence](docs/plan/2026-10-25-qoauth-overall.md#platform-validation-clarification-and-execution-a6).
-No new feature phase is scheduled.
+Only code and formal platform artifacts are published. Installation state, keys,
+configuration, caches and test credentials are not release contents. No service
+is deployed. See [font provenance](docs/font-licensing.md),
+[dependency notices](docs/dependencies.md) and [remaining limits](docs/roadmap.md).
 
 ## Service entry points
 
@@ -101,7 +96,7 @@ may use `--development-http` with numeric loopback issuer/listener addresses onl
 
 The embedded Semi UI serves a static product homepage at `/` (no API calls or
 installation data), sign-in, MFA and consent at `/login`, self-service at `/account`
-and administration at `/admin`. Pages are code-split; the copy is English-only.
+and administration at `/admin`. Pages are code-split; the interface uses simplified Chinese.
 
 GET `/readyz` returns only `{"ready":true}` (200) or `{"ready":false}` (503), with
 no cookie and a one-second database deadline. It checks persisted issuer/key binding
@@ -155,8 +150,8 @@ does not authenticate a maliciously replaced whole backup. Protect the full dire
 See the [operating and recovery procedure](docs/architecture.md#maintenance-and-recovery-runbook)
 for client/account reconciliation, interrupted operations and version restrictions.
 
-[Remaining release gates](docs/roadmap.md#remaining-bounded-work) are finite:
-QoAuth's own source-license choice and real installation/proxy review. Native Linux
+[Remaining limits](docs/roadmap.md#remaining-bounded-work) include the unselected
+QoAuth source license and a separate real installation/proxy review. Native Linux
 and final-image synthetic execution plus image-specific provenance/notices now pass.
 Basic accessibility, local load and a compatible M2.2-to-current restore drill passed within recorded
 limits. Full OIDF certification, broad capacity claims and a comprehensive

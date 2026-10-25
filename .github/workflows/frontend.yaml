@@ -1,0 +1,83 @@
+name: Reusable Frontend Checks
+
+on:
+  workflow_call:
+    outputs:
+      web_artifact_id:
+        description: Immutable ID of the tested same-source frontend
+        value: ${{ jobs.frontend.outputs.web_artifact_id }}
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    name: Frontend checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    outputs:
+      web_artifact_id: ${{ steps.web.outputs.artifact-id }}
+    env:
+      GOTOOLCHAIN: local
+      GOMAXPROCS: '2'
+      GOFLAGS: -p=2
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.26.10
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.22.1
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Install locked frontend dependencies
+        id: dependencies
+        working-directory: web
+        run: npm ci --ignore-scripts
+      - name: Test and build the frontend
+        id: static
+        working-directory: web
+        run: |
+          npm test
+          npm run build
+      - name: Verify installed Chromium
+        run: google-chrome --version
+      - name: Test real authentication, responsive UI and network fonts
+        id: browser
+        run: node scripts/browser-check.mjs .cache/browser-release
+      - name: Bind tested frontend bytes to source
+        run: node scripts/release.mjs export-web .cache/tested-web
+      - name: Upload tested frontend
+        id: web
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: tested-web-${{ github.sha }}-${{ github.run_attempt }}
+          path: .cache/tested-web/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+      - name: Report quality summary
+        if: always()
+        env:
+          CI_STAGE: quality
+          CI_PLATFORM: linux/amd64
+          CI_STATUS: ${{ job.status }}
+          CI_CHECKS: ${{ toJSON(steps) }}
+          CI_REPORT_FILE: .cache/frontend-ci.json
+        run: node scripts/ci-report.mjs
+      - name: Upload sanitized frontend diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: frontend-test-diagnostics
+          path: |
+            .cache/frontend-ci.json
+            .cache/browser-release/report.json
+          if-no-files-found: warn
+          retention-days: 14

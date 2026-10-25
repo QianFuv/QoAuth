@@ -1,0 +1,228 @@
+name: Reusable Release
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+      web_artifact_id:
+        required: false
+        type: string
+      publish:
+        required: false
+        type: boolean
+        default: false
+      source_run:
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: Linux archive and image
+    if: '!inputs.publish'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      GOTOOLCHAIN: local
+      GOMAXPROCS: '2'
+      GOFLAGS: -p=2
+      CGO_ENABLED: '0'
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.26.10
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.22.1
+      - name: Install locked license metadata
+        working-directory: web
+        run: npm ci --ignore-scripts
+      - name: Download tested frontend bytes
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ inputs.web_artifact_id }}
+          path: .cache/tested-web
+          merge-multiple: true
+      - name: Verify and import exact frontend
+        run: node scripts/release.mjs import-web .cache/tested-web
+      - name: Build both formal executables
+        id: binaries
+        shell: bash
+        run: |
+          mkdir -p dist
+          GOOS=linux GOARCH=amd64 go build -trimpath -ldflags=-w -o dist/qoauth-linux-amd64 ./cmd/qoauth
+          GOOS=windows GOARCH=amd64 go build -trimpath -ldflags=-w -o dist/qoauth-windows-amd64.exe ./cmd/qoauth
+          python3 scripts/package-local.py --release
+          node scripts/release.mjs verify-assets "dist/$(cat VERSION)/assets"
+      - name: Run native Linux suites and lifecycle
+        id: native
+        shell: bash
+        run: |
+          mkdir -p .cache/linux-tests
+          for package in cmd/qoauth internal/fixture internal/identity internal/maintenance internal/oidc internal/store internal/webassets examples/go-rp; do
+            go test -c -o ".cache/linux-tests/${package//\//-}.test" "./$package"
+          done
+          python3 scripts/verify-linux.py --tests-dir .cache/linux-tests --binary dist/qoauth-linux-amd64 --output .cache/linux-acceptance
+      - name: Build the exact-source Linux image with tested frontend
+        id: image
+        shell: bash
+        run: |
+          docker buildx build --load --platform linux/amd64 --build-arg FRONTEND_STAGE=tested --build-arg SOURCE_REVISION="$GITHUB_SHA" --build-context frontend-build=./.cache/tested-web/web --tag "qoauth-ci:$GITHUB_SHA" .
+          test "$(docker image inspect "qoauth-ci:$GITHUB_SHA" --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')" = "$GITHUB_SHA"
+          go build -o .cache/go-rp ./examples/go-rp
+          image_id="$(docker image inspect "qoauth-ci:$GITHUB_SHA" --format '{{.Id}}')"
+          python3 scripts/verify-container.py --image "$image_id" --rp-binary .cache/go-rp --output .cache/container-acceptance
+      - name: Stage only accepted release bytes
+        run: node scripts/release.mjs stage "dist/$(cat VERSION)/assets" .cache/accepted-release
+      - name: Upload accepted archives and source manifest
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: accepted-release-${{ github.sha }}
+          path: .cache/accepted-release/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Report build-acceptance summary
+        if: always()
+        env:
+          CI_STAGE: build-acceptance
+          CI_PLATFORM: linux/amd64
+          CI_STATUS: ${{ job.status }}
+          CI_CHECKS: ${{ toJSON(steps) }}
+          CI_REPORT_FILE: .cache/linux-ci.json
+        run: node scripts/ci-report.mjs
+      - name: Upload sanitized acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: linux-acceptance-diagnostics
+          path: |
+            .cache/linux-ci.json
+            .cache/linux-acceptance/report.json
+            .cache/container-acceptance/report.json
+          if-no-files-found: warn
+          retention-days: 14
+
+  windows:
+    name: Windows archive
+    needs: linux
+    if: '!inputs.publish'
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.26.10
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.22.1
+      - name: Download accepted archives
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: accepted-release-${{ github.sha }}
+          path: .cache/accepted-release
+      - name: Verify both archives and smoke the Windows executable
+        id: native
+        shell: pwsh
+        run: |
+          node scripts/release.mjs verify-assets .cache/accepted-release/assets
+          if ($LASTEXITCODE -ne 0) { throw 'Archive verification failed' }
+          $version = (Get-Content VERSION -Raw).Trim()
+          $archive = ".cache/accepted-release/assets/qoauth_${version}_windows_amd64.zip"
+          Expand-Archive -LiteralPath $archive -DestinationPath .cache/native-windows
+          $env:ARCHIVE_SHA256 = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          node scripts/release.mjs smoke .cache/native-windows .cache/windows-acceptance.json
+          if ($LASTEXITCODE -ne 0) { throw 'Windows acceptance failed' }
+      - name: Upload Windows acceptance identity
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-acceptance-${{ github.sha }}
+          path: .cache/windows-acceptance.json
+          if-no-files-found: error
+          retention-days: 14
+      - name: Report build-acceptance summary
+        if: always()
+        env:
+          CI_STAGE: build-acceptance
+          CI_PLATFORM: windows/amd64
+          CI_STATUS: ${{ job.status }}
+          CI_CHECKS: ${{ toJSON(steps) }}
+        run: node scripts/ci-report.mjs
+
+  publish:
+    name: Publish verified packages
+    if: inputs.publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    concurrency:
+      group: version-release-${{ inputs.version }}
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.26.10
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.22.1
+      - name: Require complete same-source CI and immutable artifact IDs
+        id: source
+        env:
+          SOURCE_RUN: ${{ inputs.source_run }}
+        run: node scripts/release.mjs prepublish "$SOURCE_RUN"
+      - name: Download exact accepted archives
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ steps.source.outputs.accepted_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ inputs.source_run }}
+          path: .cache/accepted-release
+          merge-multiple: true
+      - name: Download exact Windows acceptance
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ steps.source.outputs.windows_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ inputs.source_run }}
+          path: .cache/windows-proof
+          merge-multiple: true
+      - name: Publish accepted bytes without rebuilding or overwriting
+        id: publication
+        run: node scripts/release.mjs publish .cache/accepted-release .cache/windows-proof/windows-acceptance.json
+      - name: Download and verify the public release
+        id: public
+        run: node scripts/release.mjs verify-published .cache/public-download
+      - name: Report publish summary
+        if: always()
+        env:
+          CI_STAGE: publish
+          CI_PLATFORM: linux/amd64,windows/amd64
+          CI_STATUS: ${{ job.status }}
+          CI_CHECKS: ${{ toJSON(steps) }}
+        run: node scripts/ci-report.mjs
