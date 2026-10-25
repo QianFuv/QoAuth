@@ -689,8 +689,8 @@ This supersedes the prior proposal wait. No further internal-plan approval is ne
 | Task | Bounded scope | Intended logical commit | State |
 |---|---|---|---|
 | C0 | A5 and this single checklist | docs(plan): record final closure authorization | Committed f0e2227 |
-| C1 | Existing password-policy consistency, shared new-password field, precise safe errors | fix(identity): align password policy across entry points | Done; commit follows |
-| C2 | Existing administrator reset API/UI with fresh MFA and CSRF, preserved factor/invalidation | feat(admin): expose controlled password reset | Pending |
+| C1 | Existing password-policy consistency, shared new-password field, precise safe errors | fix(identity): align password policy across entry points | Committed d50d81d |
+| C2 | Existing administrator reset API/UI with fresh MFA and CSRF, preserved factor/invalidation | feat(admin): expose controlled password reset | Done; commit follows |
 | C3 | Disabled-client list/safe settings and explicit review-prefill, no restored grants or secrets | feat(admin): review disabled application settings | Pending |
 | C4 | Minimal bounded readiness with generic public status and store/key/install checks | feat(health): expose bounded readiness checks | Pending |
 | C5 | Second pinned RP implementation and focused local protocol checks | test(oidc): verify a second standard relying party | Pending |
@@ -720,3 +720,10 @@ counts NFC code points/UTF-8 bytes, retaining existing login semantics. Identity
 suites passed (57 top-level tests); added API policy/error consistency regression passed.
 TypeScript/Vite build passed. Windows runtime inspection found no running WSL distro
 and no Docker Desktop Linux engine pipe; neither was started. Browser acceptance is C6.
+
+C2: existing reset endpoint is now available in a labeled administrator form,
+with explicit revocation/MFA text and password-field clearing after submission.
+Production API tests cover non-admin, CSRF, stale/partial MFA, persisted invalidation
+and successful new-password plus preserved-factor login; six OP tests/subtests passed.
+A storage interleaving proves stale admin freshness and old verified credential
+versions cannot authorize reset/login; targeted test and TypeScript/Vite build pass.

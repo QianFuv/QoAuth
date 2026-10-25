@@ -155,6 +155,41 @@ func TestOwnerClaimAndCredentialFencing(t *testing.T) {
 	}
 }
 
+func TestAdministratorPasswordResetRechecksFreshnessAndCredentialVersion(t *testing.T) {
+	storage, _, _, admin, _ := ownerFixture(t)
+	user, err := storage.AddAccount(t.Context(), "member", "old-verifier", admin.Digest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	verified, err := storage.Account(t.Context(), user)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = storage.db.Exec(`UPDATE browser_sessions SET auth_time=0 WHERE digest=?`, admin.Digest); err != nil {
+		t.Fatal(err)
+	}
+	if err = storage.ResetAccount(t.Context(), user, "new-verifier", false, admin.Digest); err == nil {
+		t.Fatal("stale administrator changed password")
+	}
+	if _, err = storage.db.Exec(`UPDATE browser_sessions SET auth_time=? WHERE digest=?`, time.Now().Unix(), admin.Digest); err != nil {
+		t.Fatal(err)
+	}
+	if err = storage.ResetAccount(t.Context(), user, "new-verifier", false, admin.Digest); err != nil {
+		t.Fatal(err)
+	}
+	handle, err := storage.AnonymousSession(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	anonymous, err := storage.Session(t.Context(), handle)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = storage.PasswordSession(t.Context(), anonymous.Digest, verified); err == nil {
+		t.Fatal("in-flight old password verification survived administrator reset")
+	}
+}
+
 func TestTotpAndRecoveryAtomicSessions(t *testing.T) {
 	storage, path, owner, _, codes := ownerFixture(t)
 	other, err := Open(t.Context(), path)
