@@ -439,24 +439,38 @@ func (storage *Store) Application(ctx context.Context, id string) (Application, 
 	err = json.Unmarshal(payload, &result)
 	return result, err
 }
-func (storage *Store) Applications(ctx context.Context) ([]Application, error) {
-	rows, err := storage.db.QueryContext(ctx, `SELECT a.payload FROM client_config a JOIN clients c ON c.id=a.client_id WHERE c.enabled=1 ORDER BY a.client_id`)
+
+// ApplicationView is an explicit public settings projection, excluding credential fields.
+type ApplicationView struct {
+	ID              string   `json:"id"`
+	Name            string   `json:"name"`
+	Redirects       []string `json:"redirects"`
+	LogoutRedirects []string `json:"logout_redirects"`
+	Scopes          []string `json:"scopes"`
+	Audiences       []string `json:"audiences"`
+	Public          bool     `json:"public"`
+	Resource        bool     `json:"resource"`
+	Enabled         bool     `json:"enabled"`
+}
+
+func (storage *Store) Applications(ctx context.Context) ([]ApplicationView, error) {
+	rows, err := storage.db.QueryContext(ctx, `SELECT a.payload,c.enabled FROM client_config a JOIN clients c ON c.id=a.client_id ORDER BY a.client_id`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	result := []Application{}
+	result := []ApplicationView{}
 	for rows.Next() {
 		var payload []byte
 		var app Application
-		if err = rows.Scan(&payload); err != nil {
+		var enabled bool
+		if err = rows.Scan(&payload, &enabled); err != nil {
 			return nil, err
 		}
 		if err = json.Unmarshal(payload, &app); err != nil {
 			return nil, err
 		}
-		app.SecretHash = ""
-		result = append(result, app)
+		result = append(result, ApplicationView{ID: app.ID, Name: app.Name, Redirects: app.Redirects, LogoutRedirects: app.LogoutRedirects, Scopes: app.Scopes, Audiences: app.Audiences, Public: app.Public, Resource: app.Resource, Enabled: enabled})
 	}
 	return result, rows.Err()
 }
