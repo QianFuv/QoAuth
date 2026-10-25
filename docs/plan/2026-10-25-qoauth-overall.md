@@ -3,7 +3,8 @@
 Protocol Version: 2026-09-05
 Protocol Revision: autonomous-execution-git-flow-v2
 
-Revision 3, 2026-10-25. Status: In Progress. Parent internal review accepted the
+Revision 3, 2026-10-25. Status: M1 implemented; evidence ready for parent acceptance.
+Parent internal review accepted the
 lightweight direction and explicitly authorized M1 local feasibility work (A2).
 There is no outstanding end-user approval gate for this scope. This is the single
 execution checklist; do not create another plan for each small step.
@@ -60,8 +61,8 @@ run normal hooks, and reconcile resulting HEAD for every logical commit.
 | T1 | Existing docs: A2, proxy/container design, six review fixes | V1 | docs(plan): accept parent review and authorize local M1 | Done: 5de6f7c |
 | T2 | go.mod/go.sum, web, asset handler, cmd, ignore/build/container files | V2; V6 consolidated in T5 | feat(scaffold): embed the lightweight application shell | Done: 5f74b31 |
 | T3 | internal/store and SQL migrations | V3 atomic SQLite transitions | feat(store): enforce atomic sqlite credential transitions | Done: bbf7ad4 |
-| T4 | Test-only fixture OP/RP/resource integration, resolved Go graph and store failure tests | V3, V4 actual standard endpoints | feat(oidc): validate the standard fixture flow with sqlite | Done; commit follows |
-| T5 | Evidence and bounded support corrections | V1-V6 applicable checks | docs(validation): record M1 evidence and remaining gates | Pending |
+| T4 | Test-only fixture OP/RP/resource integration, resolved Go graph and store failure tests | V3, V4 actual standard endpoints | feat(oidc): validate the standard fixture flow with sqlite | Done: 76467f1 |
+| T5 | Existing README/architecture/dependencies/integration/roadmap/checklist evidence | V1-V6 applicable checks | docs(validation): record M1 evidence and remaining gates | Done; commit identifiable by its exact message in Git |
 
 Record a necessary separate logical correction's scope/message before committing
 under A2. No unrelated changes or history rewriting. M2 remains a later parent decision.
@@ -108,7 +109,8 @@ protocol. The explicit A2 simplification overrides redundant template machinery.
   passed. Historical plan remains in Git; no history was rewritten.
 - M1 entry: Go 1.26.10 windows/amd64, Node 24.22.1, npm 12.2.0, Python 3.12.15.
   Docker CLI/Compose available but Linux engine pipe absent. No environment change
-  or real credential created. T1-T4 complete; final evidence consolidation is T5.
+  or real credential created. T1-T5 are complete within the authorized M1 boundary;
+  missing native Linux/container execution remains a later acceptance gap.
 
 - T2: Locked frontend build and current embedded route tests passed; npm audit reported
   zero findings. Go test passed (two packages). V6 cross-build/config evidence is
@@ -133,3 +135,100 @@ protocol. The explicit A2 simplification overrides redundant template machinery.
   resource audience/scope, revocation and introspection timeout denial. Strict
   AES-GCM rejects the library's legacy unauthenticated token format. No production
   login/admin/session/MFA implementation is represented by these fixture passes.
+
+## Final M1 evidence (2026-10-25)
+
+Code evidence corresponds to `76467f1b322553d2f9cfa7abb0e8128326423f3a`; T5 changes
+documentation only. Generated assets and local binaries are ignored, not release
+artifacts. Checks were run on Windows amd64 with the versions in
+[dependencies](../dependencies.md). No benchmark or production capacity result exists.
+
+| Check | Actual result | Limit |
+|---|---|---|
+| `npm ci --ignore-scripts --no-audit --no-fund`; `npm run build` | Locked install, TypeScript check and Vite build passed | No full browser login/admin test |
+| `go test -timeout 60s ./cmd/... ./internal/...` | 28 passing tests/subtests; 4 packages considered | Synthetic fixture; command package has no tests |
+| `go vet ./cmd/... ./internal/...`; gofmt check | Passed | Applicable authored Go only |
+| `CGO_ENABLED=1 go test -timeout 60s -race ./internal/store ./internal/fixture` | 27 passing tests/subtests; 2 packages | Existing GCC; no compiler installed |
+| SQLite live settings | 3.54.1; WAL; foreign_keys=1; synchronous=2 (FULL); busy_timeout=3000 | Windows runtime; single-instance design |
+| `go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 -test ./cmd/... ./internal/...` | No known vulnerabilities found | Versioned advisory snapshot, not proof of absence |
+| Same scanner, `-mode=binary` on both fixture test binaries | No known vulnerabilities found | Includes actual OP/SQLite graph; Linux binary was scanned, not executed |
+| Full `npm audit --json` | Zero findings | Dependency advisory coverage only |
+| `CGO_ENABLED=0 GOARCH=amd64 GOOS=<windows,linux> go build -trimpath -ldflags="-s -w" ... ./cmd/qoauth` | Both UI shell binaries built | Shell contains no production authentication |
+| Same target pair, `go test -c ... ./internal/fixture` | Both OP/SQLite test executables built | Windows tests run; Linux execution missing |
+| Windows shell/browser smoke | Embedded page rendered; synthetic form and keyboard focus worked under CSP | T3 snapshot timed out twice; Chrome fallback used; task tabs/process stopped |
+| `docker compose config --quiet` | Passed; internal 0.0.0.0 with host 127.0.0.1 publication | Linux engine pipe absent; no image build/run or deployment |
+| `python .git/validate-docs.py`; `git diff --check` | Passed | Local links/UTF-8/markers, not every remote URL re-fetched |
+
+The UI smoke is reusable: the final locked rebuild produced the same asset names
+and index SHA256 `1dfac9d5f87bb798b2a9c33fd78a50b8939631b3dedb9fb15b6f137d6a3354bf`.
+The HTTP test harness owns its ephemeral loopback servers. It retained in-memory
+keys while reopening SQLite/provider state; persistent real-key restart, key
+rotation and backup restore were not tested. Recovery-code atomicity is a storage
+test, not a completed password/MFA recovery product flow.
+
+Local artifact SHA256 values:
+
+| Ignored path | SHA256 |
+|---|---|
+| `dist/qoauth-windows-amd64.exe` | `0096b709cb1c547da758fd058a7848e55a88d48743c4be802b82b018b09cf4d6` |
+| `dist/qoauth-linux-amd64` | `8f9bf7430217b51fe54cebe8fd5d8324767e8040513aa931948150d06f5a800d` |
+| `dist/qoauth-fixture-windows-amd64.test.exe` | `e9107664823b7337757d583d888778ac400768a2a9c17bc84fce836c4d2f414c` |
+| `dist/qoauth-fixture-linux-amd64.test` | `7b93634659637bb00937b6f4938e120767265b9f66ec89edc625f52eaca09f63` |
+
+F1-F4 support the selected lightweight approach within M1's synthetic/local scope.
+Formal OpenID conformance, a second independent RP, real SSO/session assurance,
+password/TOTP/ownership/recovery, license bundle/SBOM, native Linux/container,
+backup/restore and key rotation remain future gates. No user approval wait is a
+technical blocker; the parent owns the next implementation decision.
+
+## Proposed next slice for parent decision: M2.1 local authentication core
+
+This is a concrete proposal, not a claim of new implementation authorization.
+Keep the same process/database/UI stack and existing single checklist.
+
+1. Add production configuration and a host-invoked initialization command. A fresh
+   database gets one owner with restricted enrollment state, never a default account
+   or anonymous web claim. Re-running initialization cannot reopen ownership.
+   Implement key-file handling and credential persistence; exercise it only with
+   synthetic temporary test data until real credential creation is authorized.
+2. Implement password login (mature Argon2id), bounded throttling, TOTP enrollment/
+   verification and one-use recovery codes. Owner/admin APIs require completed MFA
+   and fresh proof for sensitive changes; recovery never bypasses MFA. Provide one
+   simple host-controlled owner recovery command, with session/grant invalidation.
+3. Connect a production OIDC adapter to real user/client/session records, keeping
+   the M1 atomic code/refresh invariants. Add exact app callbacks, allowed scopes,
+   resource-introspection identity, consent and minimal user/app administration.
+   Support two synthetic RPs sharing eligible SSO, prompt/max_age, local logout and
+   session/grant revocation. Preserve the independent RP-cookie boundary.
+4. Add only the login/MFA, account/session and user/application management screens
+   required for that path. Keep activity records simple. Deliver one runnable Go RP
+   example using standard libraries; no private OAuth SDK.
+
+Bounded files: `cmd/qoauth`, new small `internal/config`, `internal/identity`,
+`internal/session` and `internal/oidc` packages where actual boundaries require them;
+existing `internal/store` plus the next SQL migration; `internal/webassets`,
+`web/src`, `examples/go-rp`, lockfiles and the existing docs. Keep
+`internal/fixture` as regression support, never an application login mode.
+
+Acceptance: fresh synthetic install -> restricted owner -> confirmed TOTP -> add
+one ordinary synthetic user and app -> standard RP login/consent -> protected API
+-> refresh -> revoke/logout -> rejection -> restart without resurrecting access.
+Negative checks cover unowned/repeated init, wrong passwords and throttling,
+promotion/reset MFA bypass, TOTP/recovery replay, CSRF/session fixation, exact
+client/redirect/scope/audience binding, pending-code invalidation and all M1 races.
+Run scoped Go tests/vet/race, browser flow, dependency scans and cross-builds. Add
+native Linux/container evidence only when an already authorized runtime is usable.
+
+Excluded from M2.1: public signup, SMTP/email recovery, social login, passkeys,
+enterprise protocols/tenancy, generic permission engines, HA and extra services.
+Backup/rotation/conformance/release hardening remain M3, with security-critical
+account/session regressions required during M2.1 rather than deferred.
+
+Requested implementation authority is limited to repository code/docs/dependencies,
+temporary synthetic data and loopback test servers, and logical main commits.
+No additional OS/account privileges are expected for that work. Creating a real
+owner, durable operational signing/encryption/client keys, production state,
+reverse-proxy/TLS/network changes, starting a missing Docker/system service, real
+OAuth/SMTP bindings or deployment are separate concrete actions requiring explicit
+authorization; none is needed to write/test the proposed code. Parent can approve
+or narrow this slice directly without transferring internal plan review to the user.

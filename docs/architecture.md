@@ -4,6 +4,15 @@ Review revision: 2, 2026-10-25. The enterprise-oriented draft was withdrawn.
 Parent accepted the lightweight direction and M1 local feasibility scope under A2.
 This is the target contract, not a production-readiness assessment.
 
+M1 actual layout: `cmd/qoauth` is the embedded UI shell; `internal/webassets`
+serves the locked frontend bundle; `internal/store` owns SQLite migrations and
+atomic transitions; `internal/fixture` connects the actual OP and independent RP/
+resource tests using synthetic state only. No production handler imports fixture.
+The feasibility schema has `schema_migrations`, `users`, `clients`, `assignments`,
+`auth_requests`, `grants`, `tokens`, `recovery_codes` and `activity`. It deliberately
+lacks password/TOTP storage, real client configuration and browser sessions; these
+need the next bounded implementation, not an assertion that M1 is a usable IAM.
+
 ## Decisions
 
 | ID | Recommendation | Reason / condition |

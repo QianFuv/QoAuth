@@ -1,12 +1,51 @@
 # Dependency choices and license risks
 
-Verified: 2026-10-25. These are research snapshots and proposed candidates, not an
-installed or tested lockfile. No Go module, package manifest, downloaded dependency
-tree, or software installation was created. Recheck advisories and pin a coherent
-graph during M1; selecting individually current versions does not prove compatibility.
+Verified: 2026-10-25. M1 now has a tested Go module graph and npm lockfile. Dependencies
+were downloaded into project-local caches/node_modules; no system toolchain was
+installed or upgraded. The shortlist retains alternatives as research, not installed
+requirements. Only the selected set below is part of the current implementation.
 
 Current scope: personal/small-team single-instance service; SQLite is the primary
-storage candidate. Enterprise connectors and infrastructure are not prerequisites.
+storage. Enterprise connectors and infrastructure are not prerequisites.
+
+## Selected M1 set and evidence
+
+| Component | Exact selected version | License / scope |
+|---|---|---|
+| Go / Node / npm | 1.26.10 / 24.22.1 / 12.2.0 | Existing build tools; inventory tool/bundled licenses before distributing a build environment |
+| ZITADEL OIDC / coreos RP | v3.51.16 / v3.21.0 | Apache-2.0; actual OP and independent RP fixture |
+| go-jose/v4 / x/oauth2 | v4.1.6 / v0.37.0 | Apache-2.0 / BSD-3-Clause; no separate go-jose/v3 in resolved graph |
+| modernc SQLite / libc | v1.61.0 / v1.79.0 | BSD-3-Clause and bundled notices; libc matches the driver's selected dependency |
+| Embedded SQLite engine | 3.54.1 | Public domain engine; actual runtime queried on Windows |
+| React / React DOM | 19.3.1 / 19.3.1 | MIT |
+| Semi UI / Vite / TypeScript | 2.104.0 / 8.3.5 / 5.9.3 | MIT / MIT / Apache-2.0 |
+| React / React DOM type packages | 19.2.2 / 19.2.2 | MIT |
+| govulncheck | v1.9.0 | BSD-3-Clause; verification tool, not linked into product |
+
+Exact graph/checksums live in [go.mod](../go.mod), [go.sum](../go.sum) and
+[package-lock.json](../web/package-lock.json). `go list -m all` was recorded locally.
+The sources linked below and downloaded package license files govern actual terms;
+this table is not complete distribution clearance. Password/TOTP/passkey candidates
+are not dependencies yet. Pin/review password and TOTP libraries when M2 needs them.
+
+M1 scoped Go tests/vet/race and both amd64 builds passed. `npm ci --ignore-scripts`
+followed by the TypeScript/Vite build passed; the full npm audit reported zero
+findings. govulncheck v1.9.0 reported no known vulnerabilities in the source/test
+graph. Binary-scan results and the precise runtime limitations are recorded in the
+[checklist](plan/2026-10-25-qoauth-overall.md). A clean scan is not a security verdict.
+
+The selected OP version's actual source still defaults to a legacy AES-CFB
+fallback. M1 explicitly supplies `op.NewAES256GCMCrypto` without a legacy decrypter;
+tests reject both modified opaque tokens and tokens re-encoded with the legacy
+format. The library's broad default discovery is also restricted to the enabled
+code/refresh/S256 profile. Source: [tagged provider](https://github.com/zitadel/oidc/blob/v3.51.16/pkg/op/op.go),
+[opaque-token advisory](https://github.com/zitadel/oidc/security/advisories/GHSA-j8gq-92xf-382c).
+These are application integration obligations, not reasons to invent cryptography.
+
+Semi's deep Button import and React 19 adapter build under the intended CSP without
+the unused full-package animation dependency's eval warning. Final bundle: about
+256.47 kB JavaScript and 50.12 kB CSS before gzip. Browser smoke covered rendering
+and keyboard focus only, not full accessibility or production login acceptance.
 
 ## Protocol and storage shortlist
 
@@ -19,7 +58,7 @@ storage candidate. Enterprise connectors and infrastructure are not prerequisite
 | `github.com/go-jose/go-jose/v4` | v4.1.6; [Apache-2.0](https://raw.githubusercontent.com/go-jose/go-jose/v4.1.6/LICENSE) | JOSE primitive library; issuer/audience/purpose/algorithm policy remains application responsibility |
 | `github.com/go-webauthn/webauthn` | v0.18.2; [BSD-3-Clause](https://raw.githubusercontent.com/go-webauthn/webauthn/v0.18.2/LICENSE) | Optional future passkeys only; do not add until demanded and tested |
 | `golang.org/x/crypto/argon2` | module v0.58.0; [BSD-3-Clause](https://raw.githubusercontent.com/golang/crypto/v0.58.0/LICENSE) | Argon2id primitive; salt/format/parameter bounds/constant-time comparison/rehash policy still required |
-| `github.com/pquerna/otp` | [Apache-2.0](https://raw.githubusercontent.com/pquerna/otp/master/LICENSE) | TOTP candidate; pin/review in M1, enforce enrollment and replay protection in the application |
+| `github.com/pquerna/otp` | [Apache-2.0](https://raw.githubusercontent.com/pquerna/otp/master/LICENSE) | M2 TOTP candidate; pin/review when needed, enforce enrollment and replay protection in the application |
 | `modernc.org/sqlite` | v1.61.0 observed; [BSD-3-Clause](https://gitlab.com/cznic/sqlite/-/raw/v1.61.0/LICENSE) | Primary single-instance candidate; CGo-free Windows/Linux amd64 documented; verify actual SQLite engine, libc coupling and atomic transactions |
 | `github.com/mattn/go-sqlite3` | v1.14.52; [MIT](https://raw.githubusercontent.com/mattn/go-sqlite3/v1.14.52/LICENSE) | Not preferred: CGo and compiler/cross-toolchain requirements complicate requested artifacts |
 
@@ -82,7 +121,7 @@ before accepting a toolchain, and do not let auto-download silently change the
 system environment. [ZITADEL module](https://github.com/zitadel/oidc/blob/v3.51.16/go.mod),
 [WebAuthn module](https://github.com/go-webauthn/webauthn/blob/v0.18.2/go.mod).
 
-TOTP should use an existing implementation such as `pquerna/otp`, subject to M1
+TOTP should use an existing implementation such as `pquerna/otp`, subject to M2
 version/advisory review. Do not write the OTP algorithm from scratch. Mail transport
 is optional; migrations are small ordered SQL files, not a database portability
 framework. SAML/SCIM dependencies are outside scope. Prefer a small graph; evaluate

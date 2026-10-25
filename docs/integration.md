@@ -1,9 +1,46 @@
 # Integration contract and simple examples
 
-Design examples only, 2026-10-25. QoAuth has no running endpoints or SDK yet.
-All domains below are reserved examples; no clients, secrets, users, bindings or
-network services have been created. Endpoint names other than standardized
-discovery are resolved through metadata, not hard-coded guesses.
+Updated 2026-10-25. M1 provides executable synthetic tests using standard libraries;
+it does not provide a production login server or proprietary SDK. The configuration
+examples below remain a target contract with reserved domains. No real users,
+credentials or external bindings were created. Endpoint locations are discovered
+from metadata in real integrations; fixture assertions may pin the tested library's
+known paths to catch regressions.
+
+## M1 executable fixture
+
+After building the frontend as shown in [README](../README.md), run:
+
+```sh
+go test -timeout 60s -v ./internal/fixture
+```
+
+[integration_test.go](../internal/fixture/integration_test.go) uses coreos/go-oidc
+v3.21.0 and x/oauth2 v0.37.0 against the actual ZITADEL OP v3.51.16 and SQLite
+adapter. It visits the embedded login HTML, submits a synthetic login transaction,
+checks state/nonce, verifies the signed RS256 ID Token, reads UserInfo, refreshes
+with consent, introspects, revokes and checks RP-initiated logout. The OP uses a
+canonical loopback test issuer; insecure HTTP is fixture-only.
+
+[resource_test.go](../internal/fixture/resource_test.go) runs an independent HTTP
+API. Its resource credential is distinct from the requesting RP. It checks active,
+audience and scope; valid access succeeds, revoked/wrong-audience/missing-scope
+access fails, and an introspection timeout denies access. There is no positive
+cache in this example. It is an executable compatibility example, not a complete
+middleware SDK or production HTTP hardening package.
+
+Each run creates a temporary SQLite database and memory-only signing/encryption/
+client keys, then closes servers and removes test state. The restart test closes
+and reopens SQLite and rebuilds the OP while retaining those same keys in memory;
+it does not demonstrate persistent key custody or a full process restart. The
+separate storage crash test covers uncommitted transaction recovery only.
+
+The browser smoke rendered the actual embedded bundle and checked keyboard focus;
+the full protocol journey was driven by Go HTTP tests, not browser automation.
+There is no password, MFA, real consent UI, persistent SSO cookie, account CRUD or
+administrator in the fixture. The production `cmd/qoauth` does not import it. The
+finished Go web application example, two-app SSO, second RP implementation and
+local conformance suite remain later acceptance work.
 
 ## Start with an existing OIDC client
 
@@ -84,8 +121,8 @@ a TLS mismatch disappear; use the test harness's explicit trust configuration.
    application's cookie. Back-channel logout is an optional future integration,
    not an initial server feature or universal logout guarantee.
 
-The expected flow is library-driven; this is intentionally not copy-paste server
-code before the library/storage feasibility gate. [OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html),
+The expected flow is library-driven; the executable fixture above demonstrates
+its M1 subset. [OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html),
 [RFC 9700](https://www.rfc-editor.org/rfc/rfc9700.html),
 [back-channel logout](https://openid.net/specs/openid-connect-backchannel-1_0.html).
 
