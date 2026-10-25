@@ -23,3 +23,13 @@ func checkPrivateFile(_ string, info os.FileInfo) error {
 }
 
 func checkDatabaseFile(path string, info os.FileInfo) error { return checkPrivateFile(path, info) }
+
+func checkReparse(string) error { return nil }
+
+func singleLink(_ *os.File, info os.FileInfo) error {
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	if !ok || stat.Nlink != 1 {
+		return errors.New("hard-link aliases are not allowed")
+	}
+	return nil
+}

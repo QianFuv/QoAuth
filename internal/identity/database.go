@@ -30,6 +30,11 @@ func PrepareDatabase(path string, create bool) error {
 		if err = checkDatabaseFile(path+suffix, info); err != nil {
 			return err
 		}
+		file, err := OpenPrivate(path + suffix)
+		if err != nil {
+			return err
+		}
+		file.Close()
 	}
 	return nil
 }

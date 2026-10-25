@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"qoauth/internal/identity"
+	"qoauth/internal/maintenance"
 	auth "qoauth/internal/oidc"
 	"qoauth/internal/store"
 )
@@ -40,12 +41,14 @@ func run(arguments []string, input io.Reader, output io.Writer) error {
 	flags := flag.NewFlagSet(command, flag.ContinueOnError)
 	flags.SetOutput(output)
 	directory := flags.String("data-dir", "", "Private installation data directory")
-	username := flags.String("username", "", "Initial owner username (init only)")
+	username := flags.String("username", "", "Owner name for init, or disabled account for recover-user")
 	issuer := flags.String("issuer", "", "Canonical public HTTPS origin")
 	listen := flags.String("listen", "127.0.0.1:8080", "HTTP listen address behind a trusted TLS proxy")
 	development := flags.Bool("development-http", false, "Permit explicitly local HTTP development only")
 	trustedProxy := flags.String("trusted-proxy", "", "One proxy IP that overwrites X-Real-IP with the client IP")
-	confirm := flags.Bool("confirm", false, "Confirm host owner recovery and invalidate existing access")
+	confirm := flags.Bool("confirm", false, "Confirm recovery/rotation; restore requires the old issuer to remain stopped")
+	snapshot := flags.String("snapshot", "", "New snapshot directory for backup, existing snapshot for restore")
+	restoreReviewed := flags.Bool("restore-reviewed", false, "Confirm stopped old issuer and review of rolled-back users, clients and RP sessions")
 	if err := flags.Parse(arguments); err != nil {
 		return err
 	}
@@ -55,17 +58,40 @@ func run(arguments []string, input io.Reader, output io.Writer) error {
 	if *directory == "" {
 		return errors.New("--data-dir is required; no automatic initialization")
 	}
-	if command != "init" && command != "recover-owner" && command != "serve" && command != "rotate-signing" {
-		return errors.New("expected init, recover-owner, rotate-signing or serve")
+	if command != "init" && command != "recover-owner" && command != "recover-user" && command != "serve" && command != "rotate-signing" && command != "backup" && command != "restore" {
+		return errors.New("expected init, serve, recover-owner, recover-user, rotate-signing, backup or restore")
 	}
 	ctx := context.Background()
+	if command == "restore" {
+		if *snapshot == "" || !*confirm {
+			return errors.New("restore requires --snapshot and --confirm that the old issuer is stopped and stays stopped")
+		}
+		if err := maintenance.Restore(ctx, *snapshot, *directory); err != nil {
+			return err
+		}
+		fmt.Fprintln(output, "Restored into a new directory with fresh signing trust. Old issuer must stay stopped. All access is invalidated; recover-owner --confirm --restore-reviewed and a ten-minute token-expiry quarantine are required. Other users and clients remain disabled.")
+		return nil
+	}
 	lock, err := identity.LockDirectory(*directory)
 	if err != nil {
 		return err
 	}
 	defer lock.Close()
+	if err = maintenance.CheckOperationalDirectory(*directory); err != nil {
+		return err
+	}
 	if command != "rotate-signing" && identity.HasPendingRotation(*directory) {
 		return errors.New("unfinished key publication; resume rotate-signing before other commands")
+	}
+	if command == "backup" {
+		if *snapshot == "" {
+			return errors.New("backup requires a new --snapshot directory")
+		}
+		if err = maintenance.Backup(ctx, *directory, *snapshot); err != nil {
+			return err
+		}
+		fmt.Fprintln(output, "Consistent database and plaintext key snapshot completed in private storage. Protect the whole snapshot as installation credentials.")
+		return nil
 	}
 	if command == "init" {
 		if !regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$`).MatchString(*username) {
@@ -139,7 +165,7 @@ func run(arguments []string, input io.Reader, output io.Writer) error {
 	if err = database.CheckInstallation(ctx, keys.Binding()); err != nil {
 		return err
 	}
-	if command == "recover-owner" {
+	if command == "recover-owner" || command == "recover-user" {
 		if !*confirm {
 			return errors.New("owner recovery requires --confirm")
 		}
@@ -151,10 +177,24 @@ func run(arguments []string, input io.Reader, output io.Writer) error {
 		if err != nil {
 			return err
 		}
-		if err = database.RecoverOwner(ctx, encoded); err != nil {
-			return errors.New("owner recovery failed")
+		state, err := database.InstallationState(ctx)
+		if err != nil {
+			return err
 		}
-		fmt.Fprintln(output, "Owner recovered with restricted access. Confirm a new TOTP before administration.")
+		if state.Maintenance {
+			if command != "recover-owner" || !*restoreReviewed {
+				return errors.New("restored owner recovery requires --restore-reviewed; other identities stay disabled")
+			}
+			err = database.RecoverRestoredOwner(ctx, encoded)
+		} else if command == "recover-user" {
+			err = database.RecoverDisabledUser(ctx, *username, encoded)
+		} else {
+			err = database.RecoverOwner(ctx, encoded)
+		}
+		if err != nil {
+			return errors.New("local account recovery failed")
+		}
+		fmt.Fprintln(output, "Account recovered with restricted access. Confirm a new TOTP; restored issuer quarantine and other disabled identities remain unchanged.")
 		return nil
 	}
 	config := auth.Config{Issuer: *issuer, DevelopmentHTTP: *development, TrustedProxy: *trustedProxy}
@@ -178,17 +218,8 @@ func run(arguments []string, input io.Reader, output io.Writer) error {
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	server := &http.Server{Addr: *listen, Handler: handler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 15 * time.Second, IdleTimeout: time.Minute, MaxHeaderBytes: 32 << 10}
-	go func() {
-		<-ctx.Done()
-		shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = server.Shutdown(shutdown)
-	}()
 	fmt.Fprintln(output, "QoAuth serving the configured issuer behind its trusted proxy.")
-	if err = server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		return errors.New("HTTP server stopped unexpectedly")
-	}
-	return nil
+	return serveHTTP(ctx, server)
 }
 
 func rotateSigning(ctx context.Context, database *store.Store, keys *identity.Keys, directory string, output io.Writer) error {

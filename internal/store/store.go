@@ -30,6 +30,13 @@ var authenticationMigration string
 //go:embed migrations/004.sql
 var limitsMigration string
 
+//go:embed migrations/005.sql
+var maintenanceMigration string
+
+func migrationScripts() []string {
+	return []string{migration, identityMigration, authenticationMigration, limitsMigration, maintenanceMigration}
+}
+
 var (
 	ErrInvalid = errors.New("invalid or inactive credential")
 	ErrReplay  = errors.New("credential reuse; grant revoked")
@@ -118,10 +125,10 @@ func (storage *Store) migrate(ctx context.Context) error {
 		if err := tx.QueryRowContext(ctx, `SELECT COALESCE(MAX(version),0) FROM schema_migrations`).Scan(&latest); err != nil {
 			return err
 		}
-		if latest > 4 {
+		if latest > len(migrationScripts()) {
 			return errors.New("unsupported schema version")
 		}
-		for index, script := range []string{migration, identityMigration, authenticationMigration, limitsMigration} {
+		for index, script := range migrationScripts() {
 			version := index + 1
 			if version <= latest {
 				var digest string

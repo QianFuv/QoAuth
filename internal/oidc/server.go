@@ -65,7 +65,7 @@ func New(ctx context.Context, database *store.Store, keys *identity.Keys, config
 	if keys == nil {
 		return nil, errors.New("installation keys required")
 	}
-	if err := database.CheckInstallation(ctx, keys.Binding()); err != nil {
+	if err := database.CheckServing(ctx, keys.Binding(), config.Issuer, time.Now()); err != nil {
 		return nil, err
 	}
 	dummy, err := identity.PasswordHash(store.NewHandle())

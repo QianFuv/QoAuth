@@ -116,6 +116,19 @@ func rejectReparse(path string) error {
 	return nil
 }
 
+func checkReparse(path string) error { return rejectReparse(path) }
+
+func singleLink(file *os.File, _ os.FileInfo) error {
+	var info windows.ByHandleFileInformation
+	if err := windows.GetFileInformationByHandle(windows.Handle(file.Fd()), &info); err != nil {
+		return err
+	}
+	if info.NumberOfLinks != 1 {
+		return errors.New("hard-link aliases are not allowed")
+	}
+	return nil
+}
+
 func normalizedDacl(value string) string {
 	parts := strings.Split(value, "(")
 	if len(parts) != 4 || (parts[0] != "D:P" && parts[0] != "D:PAI") {

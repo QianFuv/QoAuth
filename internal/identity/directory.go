@@ -7,6 +7,9 @@ import (
 
 // PrepareDirectory creates private installation storage, or validates existing storage.
 func PrepareDirectory(path string) error {
+	if err := CheckPath(path); err != nil {
+		return err
+	}
 	err := os.Mkdir(path, 0700)
 	if err == nil {
 		return restrictDirectory(path)

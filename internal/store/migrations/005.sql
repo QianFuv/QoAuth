@@ -1,0 +1,3 @@
+ALTER TABLE installation ADD COLUMN maintenance INTEGER NOT NULL DEFAULT 0 CHECK(maintenance IN (0,1));
+ALTER TABLE installation ADD COLUMN ready_after INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE installation ADD COLUMN issuer TEXT NOT NULL DEFAULT '';

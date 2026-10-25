@@ -495,7 +495,7 @@ Baseline is clean main `15e2f421c522113d4529e3872710fda512174d7c`.
 | N1 | This accepted execution record | docs(plan): record M2.2 maintenance approval | Done; identifiable by exact message |
 | N2 | Private installation lock, shared CLI lifecycle, isolated process tests | feat(storage): serialize local installation operations | Done; identifiable by exact message |
 | N3 | Persistent signing rotation and OP verification window, restart/interruption tests | feat(keys): rotate signing keys with bounded overlap | Done; identifiable by exact message |
-| N4 | Consistent backup, new-directory restore, restricted recovery and signed-token quarantine | feat(maintenance): add isolated backup and restore | Pending |
+| N4 | Consistent backup, new-directory restore, restricted recovery and signed-token quarantine | feat(maintenance): add isolated backup and restore | Done; identifiable by exact message |
 | N5 | Bounded dependency-aware state and activity cleanup, failure regressions | feat(storage): bound maintenance without losing replay evidence | Pending |
 | N6 | Actual checks, operational instructions and bounded remaining product/release list | docs(validation): record M2.2 maintenance evidence | Pending |
 
@@ -533,3 +533,30 @@ not backup time. Reviews also require waiting for HTTP shutdown before releasing
 the lock, non-migrating exact snapshot inspection, incomplete-restore markers and
 preserving session/request parents of live grants. These are integrated into N4/N5;
 static review itself is not test evidence.
+
+N4 evidence: 115 tests/subtests across eight packages pass the full scoped Windows
+race run (`.cache/m22-restore-race.json`); frontend TypeScript/Vite build passes.
+Snapshot validation is non-migrating and compares the exact supported ledger and
+actual schema, integrity/FKs, owner invariant, file hashes and RSA/AES binding.
+Locked VACUUM INTO includes committed WAL data. Fixed private snapshot members,
+link/reparse rejection, synced output and an incomplete-operation marker protect
+publication; restore always creates a separate new directory and preserves source.
+HTTP shutdown drains requests before SQLite/lock release, including timeout handling.
+
+Restore uses fresh RSA with no old verification keys and unchanged AES. It clears
+all authentication/consent/assignment state, disables all accounts/clients, persists
+a ten-minute signed-token quarantine and requires reviewed local owner recovery.
+The old issuer must remain stopped: a destination lock cannot stop copies elsewhere.
+Tests show a warm coreos RP still accepts an unexpired cached-key token, a cold RP
+rejects it under new trust, and expiry rejects it after the supported window. This
+is not immediate remote revocation or cancellation of independent RP cookies.
+
+Recovery closes the practical re-enablement gap: `recover-user --username ...
+--confirm` replaces a disabled ordinary user's password/MFA, drops old roles/access
+and requires new enrollment. The existing application form can explicitly replace
+a disabled client with complete reviewed settings, fresh confidential secret and
+no old assignments/consent. It cannot change resource/client type. Resource APIs
+require their dependent applications disabled first; resource permissions are
+rechecked inside the registration transaction. No general policy/approval system
+was added. Browser confirmation of this small form option is consolidated in N6;
+production API tests already cover credential replacement and stale scope rejection.

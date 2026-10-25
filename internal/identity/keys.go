@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -136,15 +137,13 @@ func LoadKeys(directory string) (*Keys, error) {
 }
 
 func loadKeys(path string) (*Keys, error) {
-	info, err := os.Lstat(path)
-	if err != nil || !info.Mode().IsRegular() || info.Size() > 16384 {
+	file, err := OpenPrivate(path)
+	if err != nil {
 		return nil, errors.New("installation keys unavailable")
 	}
-	if err = checkPrivateFile(path, info); err != nil {
-		return nil, err
-	}
-	content, err := os.ReadFile(path)
-	if err != nil {
+	defer file.Close()
+	content, err := io.ReadAll(io.LimitReader(file, 16385))
+	if err != nil || len(content) > 16384 {
 		return nil, errors.New("installation keys unreadable")
 	}
 	var stored diskKeys

@@ -40,6 +40,11 @@ func LockDirectory(directory string) (*InstallationLock, error) {
 	if err != nil {
 		return nil, errors.New("installation lock unavailable")
 	}
+	info, err := file.Stat()
+	if err != nil || singleLink(file, info) != nil {
+		file.Close()
+		return nil, errors.New("installation lock must not have aliases")
+	}
 	if err = lockFile(file); err != nil {
 		file.Close()
 		return nil, errors.New("installation is busy; stop its server and other local commands first")

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"slices"
 	"time"
 )
 
@@ -44,7 +45,7 @@ func (storage *Store) Bootstrap(ctx context.Context, username, password, keyID s
 			return errors.New("installation is already initialized or contains fixture data")
 		}
 		id := NewHandle()
-		if _, err := tx.ExecContext(ctx, `INSERT INTO installation VALUES(1,?)`, keyID); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO installation(id,key_id) VALUES(1,?)`, keyID); err != nil {
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, `INSERT INTO users(id) VALUES(?)`, id); err != nil {
@@ -459,6 +460,16 @@ func (storage *Store) Applications(ctx context.Context) ([]Application, error) {
 	return result, rows.Err()
 }
 func (storage *Store) AddApplication(ctx context.Context, app Application, actor string) error {
+	return storage.saveApplication(ctx, app, actor, false)
+}
+
+// ReplaceDisabledApplication requires complete reviewed configuration and a new secret.
+// Old assignments, consent and credentials cannot revive through re-registration.
+func (storage *Store) ReplaceDisabledApplication(ctx context.Context, app Application, actor string) error {
+	return storage.saveApplication(ctx, app, actor, true)
+}
+
+func (storage *Store) saveApplication(ctx context.Context, app Application, actor string, replaceDisabled bool) error {
 	payload, err := json.Marshal(app)
 	if err != nil {
 		return err
@@ -469,6 +480,52 @@ func (storage *Store) AddApplication(ctx context.Context, app Application, actor
 		if err != nil {
 			return err
 		}
+		if replaceDisabled {
+			var previousPayload []byte
+			var previous Application
+			if err = tx.QueryRowContext(ctx, `SELECT payload FROM client_config WHERE client_id=?`, app.ID).Scan(&previousPayload); err != nil || json.Unmarshal(previousPayload, &previous) != nil || previous.Resource != app.Resource {
+				return ErrInvalid
+			}
+			if app.Resource {
+				rows, err := tx.QueryContext(ctx, `SELECT payload FROM client_config a JOIN clients c ON c.id=a.client_id WHERE c.enabled=1 AND c.id<>?`, app.ID)
+				if err != nil {
+					return err
+				}
+				for rows.Next() {
+					var encoded []byte
+					var dependent Application
+					if err = rows.Scan(&encoded); err != nil || json.Unmarshal(encoded, &dependent) != nil || slices.Contains(dependent.Audiences, app.ID) {
+						rows.Close()
+						return ErrInvalid
+					}
+				}
+				err = rows.Err()
+				rows.Close()
+				if err != nil {
+					return err
+				}
+			}
+			if err = validateResources(ctx, tx, app); err != nil {
+				return err
+			}
+			result, err := tx.ExecContext(ctx, `UPDATE clients SET enabled=1 WHERE id=? AND enabled=0`, app.ID)
+			if err = one(result, err); err != nil {
+				return err
+			}
+			for _, statement := range []string{`DELETE FROM assignments WHERE client_id=?`, `DELETE FROM consents WHERE client_id=?`, `DELETE FROM login_requests WHERE client_id=?`, `UPDATE auth_requests SET consumed=1 WHERE client_id=?`, `UPDATE grants SET revoked=1 WHERE client_id=?`} {
+				if _, err = tx.ExecContext(ctx, statement, app.ID); err != nil {
+					return err
+				}
+			}
+			result, err = tx.ExecContext(ctx, `UPDATE client_config SET payload=? WHERE client_id=?`, payload, app.ID)
+			if err = one(result, err); err != nil {
+				return err
+			}
+			return activity(ctx, tx, "application-replace-disabled", actor)
+		}
+		if err = validateResources(ctx, tx, app); err != nil {
+			return err
+		}
 		if _, err := tx.ExecContext(ctx, `INSERT INTO clients(id) VALUES(?)`, app.ID); err != nil {
 			return err
 		}
@@ -477,6 +534,25 @@ func (storage *Store) AddApplication(ctx context.Context, app Application, actor
 		}
 		return activity(ctx, tx, "application-create", actor)
 	})
+}
+
+func validateResources(ctx context.Context, tx *sql.Tx, app Application) error {
+	if app.Resource {
+		return nil
+	}
+	for _, audience := range app.Audiences {
+		var encoded []byte
+		var resource Application
+		if err := tx.QueryRowContext(ctx, `SELECT payload FROM client_config a JOIN clients c ON c.id=a.client_id WHERE c.id=? AND c.enabled=1`, audience).Scan(&encoded); err != nil || json.Unmarshal(encoded, &resource) != nil || !resource.Resource {
+			return ErrInvalid
+		}
+		for _, scope := range app.Scopes {
+			if scope != "openid" && scope != "profile" && scope != "offline_access" && !slices.Contains(resource.Scopes, scope) {
+				return ErrInvalid
+			}
+		}
+	}
+	return nil
 }
 func (storage *Store) DisableApplication(ctx context.Context, id, actor string) error {
 	return storage.transaction(ctx, func(tx *sql.Tx) error {

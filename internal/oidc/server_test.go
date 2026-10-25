@@ -53,6 +53,9 @@ func newProduction(t *testing.T) *productionHarness {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err = identity.PrepareDatabase(filepath.Join(test.directory, "qoauth.db"), true); err != nil {
+		t.Fatal(err)
+	}
 	test.database, err = store.Open(t.Context(), filepath.Join(test.directory, "qoauth.db"))
 	if err != nil {
 		t.Fatal(err)

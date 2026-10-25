@@ -239,7 +239,7 @@ func (s *Server) api(response http.ResponseWriter, request *http.Request) {
 				if err == nil {
 					err = s.database.ResetAccount(request.Context(), input.User, encoded, false, session.Digest)
 				}
-			case "/api/applications/create":
+			case "/api/applications/create", "/api/applications/replace-disabled":
 				app := input.Application
 				if !s.validApplication(request, app) {
 					http.Error(response, "invalid application configuration", 400)
@@ -251,7 +251,11 @@ func (s *Server) api(response http.ResponseWriter, request *http.Request) {
 					secret = store.NewHandle()
 					app.SecretHash = store.Hash(secret)
 				}
-				err = s.database.AddApplication(request.Context(), app, session.Digest)
+				if path == "/api/applications/replace-disabled" {
+					err = s.database.ReplaceDisabledApplication(request.Context(), app, session.Digest)
+				} else {
+					err = s.database.AddApplication(request.Context(), app, session.Digest)
+				}
 				result = map[string]string{"id": app.ID, "client_secret": secret}
 			case "/api/applications/disable":
 				err = s.database.DisableApplication(request.Context(), input.Client, session.Digest)
