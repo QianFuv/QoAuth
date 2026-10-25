@@ -10,6 +10,21 @@ The intended implementation uses Go with embedded frontend assets and targets
 Windows amd64, Linux amd64, and a Linux amd64 Docker image. Implementation starts
 only after the user reviews the design and authorizes the next stage.
 
-See [the project charter](docs/project-charter.md) for requirements, authorization,
-and preservation boundaries. Research and design documents will be linked here as
-they are completed.
+The current scope is **personal/small-team self-hosting: one Go process, one SQLite
+database, one issuer**. Enterprise tenancy, SCIM/LDAP/SAML and cluster infrastructure
+are excluded from the initial commitment.
+
+Start with [the overall review plan](docs/plan/2026-10-25-qoauth-overall.md), then:
+
+- [Required, optional and excluded features](docs/product.md)
+- [Three short milestones and acceptance conditions](docs/roadmap.md)
+- [Architecture, SQLite, packaging and minimal operations](docs/architecture.md)
+- [Threat model, MFA/recovery tests and risks](docs/security.md)
+- [Dependencies, current advisories and licenses](docs/dependencies.md)
+- [Simple OIDC integration examples](docs/integration.md)
+- [Ten-product comparison](docs/research/comparison.md) and [primary sources](docs/research/sources.md)
+- [Project charter and authorization record](docs/project-charter.md)
+
+Sources were verified on 2026-10-25. Documentation research is not a runtime,
+conformance, security, build or deployment test. The proposal awaits user review;
+no implementation or future automatic Git commit permission is implied.
