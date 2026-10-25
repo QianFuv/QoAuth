@@ -245,8 +245,8 @@ but execution only with temporary isolated synthetic credentials/databases.
 | Task | Bounded scope | Commit | State |
 |---|---|---|---|
 | U1 | This acceptance/execution record | docs(plan): record M2.1 implementation approval | Done: ef23df8 |
-| U2 | Password/TOTP/key primitives, SQLite identity/session/client transitions, dependency locks and tests | feat(identity): persist credentials and enforce atomic session security | Done; commit follows |
-| U3 | Production config/CLI/OP, account and management HTTP APIs, Go RP example and E2E/failure tests | feat(auth): connect local accounts to standard OIDC sessions | Pending |
+| U2 | Password/TOTP/key primitives, SQLite identity/session/client transitions, dependency locks and tests | feat(identity): persist credentials and enforce atomic session security | Done: 788a4f6 |
+| U3 | Production config/CLI/OP, account/management APIs, Go RP, private-directory/store support and container command wiring | feat(auth): connect local accounts to standard OIDC sessions | Done; commit follows |
 | U4 | Embedded Semi login/MFA/account/admin screens and browser verification | feat(ui): add local authentication and management screens | Pending |
 | U5 | Final security/build evidence, deployment limits and next bounded scope | docs(validation): record M2.1 authentication evidence | Pending |
 
@@ -267,3 +267,14 @@ password verification, restricted owner recovery and pending-code/family invalid
 The first tests exposed and corrected noncanonical Windows DACL comparison and
 modernc multi-statement positional parameter reuse; mixed parameter sets now use
 separate statements in the same transaction. No HTTP implementation pass is implied.
+
+U3 evidence: the full scoped race command now passes 58 tests/subtests across seven
+packages, including the real production OP/account handlers and Go RP example;
+scoped vet and Compose config validation pass. The protocol/CLI tests cover initial
+owner enrollment, two RP clients sharing SSO, cookie/CSRF restrictions, same-second
+forced login, silent-login errors, denied/cross-browser consent, exact redirects,
+scope/resource rejection, refresh races, security-change invalidation and confirmed
+RP logout. A separate process loads the same temporary keys and decrypts saved
+synthetic state; key loss never reopens initialization. Log/error/activity canaries
+are absent. U3 also wires container data/issuer arguments required by the new CLI;
+the image is still not built or run. Browser UI and final graph scans remain U4/U5.

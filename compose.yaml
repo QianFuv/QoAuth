@@ -2,6 +2,7 @@ services:
   qoauth:
     build: .
     platform: linux/amd64
+    command: ["serve", "--data-dir", "/data/state", "--listen", "0.0.0.0:8080", "--issuer", "${QOAUTH_ISSUER:-https://auth.example.test}"]
     ports:
       - "127.0.0.1:8080:8080"
     read_only: true

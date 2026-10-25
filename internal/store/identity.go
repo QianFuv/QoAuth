@@ -57,6 +57,12 @@ func (storage *Store) Bootstrap(ctx context.Context, username, password, keyID s
 	})
 }
 
+// CanBootstrap prevents even key creation when an installation already owns state.
+func (storage *Store) CanBootstrap(ctx context.Context) bool {
+	var count int
+	return storage.db.QueryRowContext(ctx, `SELECT (SELECT count(*) FROM installation)+(SELECT count(*) FROM users)`).Scan(&count) == nil && count == 0
+}
+
 // CheckInstallation binds a database to its original signing-key identity.
 func (storage *Store) CheckInstallation(ctx context.Context, keyID string) error {
 	var stored string
@@ -232,7 +238,7 @@ func (storage *Store) Sessions(ctx context.Context, user string) ([]Session, err
 	return result, rows.Err()
 }
 func invalidateAccount(ctx context.Context, tx *sql.Tx, user string) error {
-	_, err := tx.ExecContext(ctx, `UPDATE browser_sessions SET revoked=1 WHERE user_id=?; DELETE FROM login_requests WHERE browser_digest IN (SELECT digest FROM browser_sessions WHERE user_id=?); UPDATE auth_requests SET consumed=1 WHERE user_id=?; UPDATE grants SET revoked=1 WHERE user_id=?`, user, user, user, user)
+	_, err := tx.ExecContext(ctx, `UPDATE browser_sessions SET revoked=1 WHERE user_id=?; DELETE FROM login_requests WHERE browser_digest IN (SELECT digest FROM browser_sessions WHERE user_id=?); UPDATE auth_requests SET consumed=1 WHERE user_id=?; UPDATE grants SET revoked=1 WHERE user_id=?; UPDATE accounts SET pending_factor=NULL,pending_until=0 WHERE user_id=?`, user, user, user, user, user)
 	return err
 }
 
@@ -491,8 +497,11 @@ func (storage *Store) Assign(ctx context.Context, user, client, actor string, al
 }
 
 // WithdrawConsent permanently invalidates the prior grant generation.
-func (storage *Store) WithdrawConsent(ctx context.Context, user, client string) error {
+func (storage *Store) WithdrawConsent(ctx context.Context, user, client, actor string) error {
 	return storage.transaction(ctx, func(tx *sql.Tx) error {
+		if err := activeSession(ctx, tx, actor, user, false); err != nil {
+			return err
+		}
 		if _, err := tx.ExecContext(ctx, `DELETE FROM consents WHERE user_id=? AND client_id=?; UPDATE grants SET revoked=1 WHERE user_id=? AND client_id=?; UPDATE auth_requests SET consumed=1 WHERE user_id=? AND client_id=?`, user, client, user, client, user, client); err != nil {
 			return err
 		}
