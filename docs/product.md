@@ -1,7 +1,8 @@
 # Lightweight product scope
 
 Review revision: 2, 2026-10-25. This replaces the earlier enterprise-oriented
-proposal following the user's explicit scope correction. Nothing is implemented.
+proposal following the user's explicit scope correction. A2 accepts the direction
+and authorizes M1 synthetic local feasibility; production behavior remains unverified.
 
 ## Intended result
 
@@ -88,5 +89,5 @@ machine, with no server errors or unbounded memory growth; record p95 rather tha
 invent a capacity guarantee. Benchmark password hashing independently with a
 bounded concurrency budget. A larger supported scale requires actual evidence.
 
-Current next action: review this lightweight scope and the short roadmap.
-No business code, service, real credential or external binding is authorized yet.
+Current next action: execute the parent-approved M1 checklist. Real credentials,
+external bindings, deployment and M2 production account behavior remain excluded.

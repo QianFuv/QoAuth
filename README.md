@@ -3,12 +3,12 @@
 QoAuth is a proposed self-hosted identity and access management system. In this
 project, “OA” means unified identity authentication, not office automation.
 
-**Status:** phase-one research and design. No authentication service, production
-security claim, deployable binary, or container image exists yet.
+**Status:** lightweight direction accepted by parent internal review; local M1
+feasibility work authorized. No production authentication or security claim.
 
 The intended implementation uses Go with embedded frontend assets and targets
 Windows amd64, Linux amd64, and a Linux amd64 Docker image. Implementation starts
-only after the user reviews the design and authorizes the next stage.
+under parent decision A2, recorded in the single execution checklist below.
 
 The current scope is **personal/small-team self-hosting: one Go process, one SQLite
 database, one issuer**. Enterprise tenancy, SCIM/LDAP/SAML and cluster infrastructure
@@ -26,5 +26,5 @@ Start with [the overall review plan](docs/plan/2026-10-25-qoauth-overall.md), th
 - [Project charter and authorization record](docs/project-charter.md)
 
 Sources were verified on 2026-10-25. Documentation research is not a runtime,
-conformance, security, build or deployment test. The proposal awaits user review;
-no implementation or future automatic Git commit permission is implied.
+conformance, security, build or deployment test. M1 uses isolated synthetic fixtures;
+real accounts, credentials, network deployment and system changes are excluded.

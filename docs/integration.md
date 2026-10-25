@@ -37,7 +37,7 @@ This is a design record, not a supported configuration-file or API schema:
   "grant_types": ["authorization_code", "refresh_token"],
   "response_types": ["code"],
   "require_pkce": true,
-  "scopes": ["openid", "profile", "email"]
+  "scopes": ["openid", "profile", "email", "offline_access"]
 }
 ```
 
@@ -66,7 +66,9 @@ a TLS mismatch disappear; use the test harness's explicit trust configuration.
 2. Redirect to the discovered authorization endpoint with `response_type=code`,
    client ID, exact registered redirect URI, `scope=openid profile email`, state,
    nonce, challenge and `code_challenge_method=S256`. Add `offline_access` only
-   when the application's use case and user consent require it.
+    when the application's use case and user consent require it; for initial offline
+    consent use `prompt=consent`. The registration above is the refresh-enabled
+    variant; ordinary login may omit offline_access and must not expect refresh.
 3. Callback checks state and expected issuer/error context, then consumes the
    login transaction once. Backend exchanges code with verifier, redirect URI
    and the registered confidential-client authentication method.

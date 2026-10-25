@@ -1,7 +1,7 @@
 # Short roadmap and acceptance conditions
 
 Review revision: 2, 2026-10-25. The user's scope correction supersedes the earlier
-team/B2B/enterprise roadmap. Only M0 is currently authorized. Estimates are rough
+team/B2B/enterprise roadmap. Parent A2 now authorizes M1 locally. Estimates are rough
 effort for one experienced engineer, not delivery promises.
 
 | Milestone | Effort estimate | Result |
@@ -11,7 +11,7 @@ effort for one experienced engineer, not delivery promises.
 | M2 Working core | 3-5 engineer-weeks | Local users, apps/scopes, code+PKCE, SSO/sessions/revoke, TOTP/recovery, simple admin UI/logs |
 | M3 Validate and package | 2-3 engineer-weeks | Protocol/security regression evidence, Go integration example, native binaries/image smoke, backup/restore and rotation guide |
 
-M1-M3 are proposals pending review and a bounded executable task contract.
+M1 uses the single approved checklist; M2/M3 remain later parent review decisions.
 No enterprise expansion, HA phase, or additional infrastructure is implied.
 Security tests accompany M1/M2; M3 consolidates evidence instead of adding security
 after the fact. A roughly 6-9 week initial effort is a planning range, subject to
@@ -36,6 +36,12 @@ the acceptance evidence and user review.
 | F3 | Same static UI bundle embeds into Windows/Linux amd64 executables without runtime Node/assets directory; API 404s never return SPA HTML; simple UI passes intended CSP |
 | F4 | Exact Go/frontend/SQLite-engine versions, licenses and advisory remediation are recorded; actual dependency graph builds; native smoke environments are identified without unauthorized installs |
 
+F1-F3 share one actual program, OP handler and SQLite adapter: synthetic user plus
+Go RP, embedded login page, code/PKCE, signed ID Token/UserInfo, protected request,
+refresh and revoke rejection, then persistence across restart. Failure injection
+must reach this real storage path; independent fake-protocol/SQL/UI demos cannot
+satisfy M1. Full account CRUD, production enrollment and admin UI remain M2.
+
 Do not expand into PostgreSQL or a storage abstraction if SQLite fails a test.
 Diagnose the concrete issue, then present the smallest design change if needed.
 
@@ -59,7 +65,7 @@ Diagnose the concrete issue, then present the smallest design change if needed.
 | R1 | Selected local OpenID Basic OP/Config OP and supported logout tests pass at recorded suite version; this is not formal certification |
 | R2 | All required threat regressions pass; reachable critical/high advisory findings resolved; focused independent authentication/recovery review completed |
 | R3 | Native Windows/Linux and Linux amd64 Docker smoke pass: embedded UI, login, persistence/restart, non-root container, graceful shutdown, correct permissions |
-| R4 | Consistent SQLite backup restores into an isolated target with correct issuer/user/client/key data; old grants cannot revive; key rotation works before/after restart |
+| R4 | Consistent backup restores in maintenance mode; old grants stay invalid; reconcile revoked client credentials/callbacks and signing-key state; rotation works before/after restart |
 | R5 | Go RP example and generic guide pass login, expiry, wrong token, revoke, and logout; app-session limits are explicit |
 | R6 | Reference small-team load and password-cost measurements recorded; disk-full/DB-locked failures are safe; no unsupported capacity promise |
 | R7 | Versioned migrations, checksum/license inventory and SBOM, minimal upgrade/rollback/backup guides are delivered; publication/deployment remain separate authorization |
@@ -74,6 +80,6 @@ Passkeys, social/upstream OIDC, back-channel logout, machine clients and device
 flow are demand-driven follow-ups. SCIM/LDAP/SAML, tenancy, approval flows and
 cluster infrastructure are outside the current roadmap, not postponed obligations.
 
-After reviewing this package, prepare only the selected next-stage contract with
-exact files, dependency/download boundary, tests and commit messages. Keep main,
+Use the existing overall-plan checklist for authorized M1 files, dependency/download
+boundary, tests and logical commits; no new per-stage plan ceremony. Keep main,
 one logical change per commit, no branch/worktree, push, release or deployment.

@@ -1,7 +1,8 @@
 # Lightweight architecture and minimal operations
 
 Review revision: 2, 2026-10-25. The enterprise-oriented draft was withdrawn.
-This is a proposal, not implemented software or a production-readiness assessment.
+Parent accepted the lightweight direction and M1 local feasibility scope under A2.
+This is the target contract, not a production-readiness assessment.
 
 ## Decisions
 
@@ -41,7 +42,8 @@ grant type and user assignment. No password grant, implicit flow, anonymous dyna
 registration or wildcard redirects.
 
 Signed ID Tokens initially use a deliberately selected interoperable algorithm
-such as RS256 and explicit allowlists. Verify issuer, audience/authorized party,
+RS256 with an explicit allowlist. ID Tokens remain standard signed JWTs even when
+access tokens are opaque. Verify issuer, audience/authorized party,
 nonce, expiry and token purpose. Honor prompt/max_age/auth_time based on actual
 authentication. ID Tokens never authorize resource APIs. Sources:
 [OIDC Core](https://openid.net/specs/openid-connect-core-1_0.html),
@@ -77,6 +79,8 @@ Password verifiers use salted Argon2id. Encrypt recoverable secrets such as TOTP
 seeds and signing private keys using reviewed standard authenticated encryption and
 a protected local root-key file. Keep the root key out of the DB backup bundle.
 No home-made cipher, default admin password or regenerated-on-restart signing key.
+M1 uses isolated synthetic fixtures and ephemeral test keys only, never the real
+production key-custody path. Restart tests may reuse keys within one test process.
 
 ## SSO, logout and revoke
 
@@ -88,6 +92,24 @@ No home-made cipher, default admin password or regenerated-on-restart signing ke
 | Disable user | Deny new login, refresh and online token validation after commit | Existing app-local authorization decisions need app cooperation |
 | Introspection | Authenticated resource checks current state, audience and scopes; fail closed | No positive-result cache initially; outage means protected API denial |
 | Back-channel logout | Optional later feature for participating clients | No initial promise of delivery or universal sign-out |
+
+| Security change | Objects invalidated atomically |
+|---|---|
+| Disable user / complete password recovery | User sessions, grants, access/refresh tokens and unredeemed authorization codes |
+| Remove assignment / withdraw consent | Matching user/client grants, access/refresh tokens and pending codes |
+| Disable client / revoke its authentication credential | Affected client grants and pending codes; old credential cannot authenticate |
+
+Authorization, code exchange, refresh, UserInfo and introspection recheck applicable
+current user/client/grant/assignment state. Recovery preserves MFA and does not create
+a fully authenticated session. Independent RP cookies remain the RP's responsibility.
+
+The existing Applications configuration carries a small resource mapping: an RP has
+allowed resource audiences; a confidential resource identity has its own credential
+and allowed introspection audiences. Example: `web-rp` requests `notes-api`, while
+`notes-api-validator` may introspect only tokens for `notes-api`. Use registered
+`client_secret_basic`; do not equate the RP with the resource, or allow every
+authenticated caller to inspect every token. No resource service/policy framework.
+M1 resource credentials exist only in synthetic fixtures, not real bindings.
 
 If an app keeps a session without fresh token validation, it must define its own
 expiry/revalidation policy. The example demonstrates this limitation. Use a
@@ -110,8 +132,12 @@ required; cross-compilation alone is insufficient. Use a pinned minimal non-root
 image, CA roots, read-only root filesystem and one explicitly mounted writable
 state directory. Persist DB, configuration and protected keys outside the image.
 
-Default listener is loopback. Deployment may use direct TLS or an explicitly
-configured HTTPS reverse proxy with a fixed trusted-proxy set. SMTP is optional:
+Native HTTP listening defaults to loopback. Use the operator's existing trusted
+HTTPS reverse proxy and a configured canonical HTTPS issuer; forwarded headers
+cannot select the issuer. Built-in TLS management is not required. Containers
+listen on 0.0.0.0 internally, with host publication defaulting to 127.0.0.1;
+container loopback is not reachable through ordinary port mapping. Actual proxy,
+TLS and network changes require separate authority. SMTP is optional:
 without it use a reviewed owner-assisted recovery path and local recovery codes,
 not a fabricated successful email reset. No automatic firewall changes, service
 installation, public binding, default credentials or real SMTP account creation.
@@ -125,8 +151,9 @@ installation, public binding, default credentials or real SMTP account creation.
 2. Restore into a separate location in maintenance mode. Check integrity, schema,
    issuer and key availability before serving. Invalidate sessions, access/refresh
    grants, outstanding login/reset/invitation tokens and saved recovery codes.
-3. A snapshot cannot know later user deletion/password/MFA changes. Require owner
-   reconciliation before reopening, or force recovery/re-enrollment when uncertain.
+3. Reconcile user/password/MFA and client credentials/callbacks/assignments/scopes/
+   signing-key state before reopening; snapshots cannot know later changes. Disable
+   uncertain clients/keys and force user recovery/re-enrollment when necessary.
    Do not claim restoration preserves unseen post-backup revocations.
 4. Apply ordered checksum-verified schema migrations after a pre-upgrade snapshot.
    On failure, stop safely; restore a compatible snapshot rather than blindly run
@@ -142,6 +169,12 @@ installation, public binding, default credentials or real SMTP account creation.
 
 No HA, remote database, scheduled backup daemon or external monitoring service is
 created by this design. The user/operator can later choose scheduling and destinations.
+
+Production first-owner setup is deferred to M2: an explicit local-host command opens
+a one-use claim bound to the installation. An initialized database cannot reopen
+anonymous claiming; interrupted enrollment resumes only under local host control.
+Only MFA enrollment is allowed until owner assurance is complete. M1 does not
+expose this as a real setup API or create a real administrator.
 
 ## Local packaging reference
 

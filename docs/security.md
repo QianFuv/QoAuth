@@ -1,7 +1,8 @@
 # Focused threat model, tests and risks
 
 Review revision: 2, 2026-10-25. Single installation, local users and clients.
-No implementation, security scan, conformance test or restore drill has run.
+M0 executed no product checks. A2 authorizes M1 synthetic local implementation;
+actual evidence is recorded in the single checklist, never inferred here.
 
 ## Assets and boundaries
 
@@ -25,12 +26,12 @@ adds its own SSRF and account-linking boundary, outside current implementation.
 | S03 | Cross-client token or scope escalation | Client B cannot redeem A's code/refresh token; resource audience/scope required; scope strings never create admin rights | A3, A4 |
 | S04 | Token forgery / confusion | Reject bad signature/algorithm/iss/aud/exp and wrong token purpose; modified opaque token cannot change identity | A3, R2 |
 | S05 | Concurrent one-use token abuse | Atomic code/refresh/recovery consumption; injected transaction failure leaves no partial grant; reuse revocation persists on error | F2, A7 |
-| S06 | Logout/revocation overpromise | Disable/revoke denies next refresh/introspection; demonstrate that an uncooperative RP's own cookie may survive | A5, A6 |
+| S06 | Logout/revocation overpromise | Disable/recovery invalidate sessions and pending codes as well as tokens; assignment/consent removal invalidates matching grants/codes; code/refresh/UserInfo/introspection recheck current state; independent RP cookies may survive | A5, A6 |
 | S07 | Password guessing / enumeration / resource exhaustion | Account+network throttles, bounded Argon2 budget, consistent errors and timing review, no attacker-triggered permanent lockout | A1, R6 |
 | S08 | MFA/reset bypass and privileged bootstrap | Unenrolled/promoted admin cannot use privileged APIs; reset preserves MFA; fresh auth for factor changes; one-use codes/TOTP replay protection | A2 |
 | S09 | XSS/CSRF/clickjacking and leaked secrets | Escape user content, CSP, CSRF/origin checks, secure cookies, no framing/localStorage tokens; planted canaries absent from logs/errors | A8 |
 | S10 | Library/parser denial of service | Patched graph, bounded bodies/nesting/key sizes/timeouts, fuzzed JOSE and known advisory regression cases | F4, R2 |
-| S11 | Snapshot rollback revives access | After restore invalidate grants and one-time credentials; reconcile rolled-back account/password/MFA changes before serving | R4 |
+| S11 | Snapshot rollback revives access | Invalidate grants/one-time credentials; reconcile user/password/MFA and client-secret/callback/assignment/scope/key state before serving; disable uncertain clients/keys | R4 |
 | S12 | Key loss/rotation, disk full/locked DB, migration failure | Preserve keys across restart; verify old/new key overlap, missing-key failure, safe disk/transaction errors and isolated restore | R3, R4, R6 |
 
 Tests must target the business/security invariant, not only reproduce a library
@@ -60,7 +61,8 @@ procedure and recovery codes. A sole-admin break-glass procedure must require
 local host control, explicit confirmation, session/grant invalidation and an activity
 record, then force MFA re-enrollment before privileged use. It is not a public API
 backdoor. Document the exact procedure during implementation; create no credentials
-or recovery bindings in this stage.
+or recovery bindings in M1; use explicit synthetic fixtures only. Production claim
+requires local host control and cannot reopen for an initialized database.
 [OWASP recovery](https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html).
 
 ## Verification strategy

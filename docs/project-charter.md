@@ -2,6 +2,16 @@
 
 Recorded: 2026-10-25 (Asia/Singapore). Product name: QoAuth.
 
+## Current authorization A2
+
+Parent internal review on 2026-10-25 accepted the lightweight direction and lifted
+the M0 stop for M1 local feasibility implementation, tests and logical local commits.
+The message beginning "Parent 已阅读总体计划全文及11项待决策和模块清单" is the actual
+authorization source; it is not attributed retrospectively to the original end user.
+Use one concise execution checklist. No additional user approval of internal plans
+is required. The historical M0-only limits below are superseded only for this M1
+scope; protected real-credential, external, deployment and system boundaries remain.
+
 ## Current scope correction A1
 
 The user's later instruction on 2026-10-25 supersedes enterprise-oriented design
