@@ -59,8 +59,8 @@ run normal hooks, and reconcile resulting HEAD for every logical commit.
 |---|---|---|---|---|
 | T1 | Existing docs: A2, proxy/container design, six review fixes | V1 | docs(plan): accept parent review and authorize local M1 | Done: 5de6f7c |
 | T2 | go.mod/go.sum, web, asset handler, cmd, ignore/build/container files | V2; V6 consolidated in T5 | feat(scaffold): embed the lightweight application shell | Done: 5f74b31 |
-| T3 | internal/store and SQL migrations | V3 atomic SQLite transitions | feat(store): enforce atomic sqlite credential transitions | Done; commit follows |
-| T4 | Test-only fixture OP adapter and independent Go RP integration | V3, V4 actual standard endpoints | feat(oidc): validate the standard fixture flow with sqlite | Pending |
+| T3 | internal/store and SQL migrations | V3 atomic SQLite transitions | feat(store): enforce atomic sqlite credential transitions | Done: bbf7ad4 |
+| T4 | Test-only fixture OP/RP/resource integration, resolved Go graph and store failure tests | V3, V4 actual standard endpoints | feat(oidc): validate the standard fixture flow with sqlite | Done; commit follows |
 | T5 | Evidence and bounded support corrections | V1-V6 applicable checks | docs(validation): record M1 evidence and remaining gates | Pending |
 
 Record a necessary separate logical correction's scope/message before committing
@@ -71,7 +71,7 @@ under A2. No unrelated changes or history rewriting. M2 remains a later parent d
 - V1: `python .git/validate-docs.py`, `git diff --check`, source/diff review.
 - V2: `npm ci` and `npm run build` in web; embedded route tests: known UI routes
   work, unknown API/protocol paths stay 404, no runtime Node/assets directory.
-- V3: `go test ./...`, `go vet ./...`, gofmt. SQLite version/settings checks,
+- V3: `go test ./cmd/... ./internal/...`, `go vet ./cmd/... ./internal/...`, gofmt. SQLite version/settings checks,
   20 concurrent one-use attempts and injected transaction failures. OP integration
   must use the same adapter, not separate fake storage and SQL demonstrations.
 - V4: Independent Go RP discovery/code+S256/signed ID Token/UserInfo; consent/refresh,
@@ -108,7 +108,7 @@ protocol. The explicit A2 simplification overrides redundant template machinery.
   passed. Historical plan remains in Git; no history was rewritten.
 - M1 entry: Go 1.26.10 windows/amd64, Node 24.22.1, npm 12.2.0, Python 3.12.15.
   Docker CLI/Compose available but Linux engine pipe absent. No environment change
-  or real credential created. Current task: T1.
+  or real credential created. T1-T4 complete; final evidence consolidation is T5.
 
 - T2: Locked frontend build and current embedded route tests passed; npm audit reported
   zero findings. Go test passed (two packages). V6 cross-build/config evidence is
@@ -119,3 +119,17 @@ protocol. The explicit A2 simplification overrides redundant template machinery.
   and subprocess exit before commit. T4 must still test these through actual OP calls.
 - V6: Both amd64 shell binaries built and Compose config validated. No Docker engine
   or native Linux execution was performed.
+
+- Verification scope correction: Go ./... traverses web/node_modules; a vet run
+  overlapped npm ci and reported a disappearing package path. Use explicit cmd/internal
+  Go package patterns and verify only after asset writes finish; this is not a code
+  test pass or a waived check.
+
+- T4: Actual ZITADEL OP, SQLite adapter, embedded login, coreos Go RP and separate
+  HTTP resource consumer passed together. Final scoped tests report 28 passing
+  tests/subtests; vet passes; race tests report 27 passes across store/fixture.
+  Coverage includes PKCE/client/redirect binding, code replay, 20-way refresh,
+  actual COMMIT failure rollback, expiry, user disable, logout redirect validation,
+  resource audience/scope, revocation and introspection timeout denial. Strict
+  AES-GCM rejects the library's legacy unauthenticated token format. No production
+  login/admin/session/MFA implementation is represented by these fixture passes.

@@ -208,6 +208,55 @@ func TestRecoveryConsumptionIsAtomic(t *testing.T) {
 	}
 }
 
+func TestCommitFailureRollsBackCodeAndGrant(t *testing.T) {
+	storage, _ := fixture(t)
+	request := code(t, storage)
+	_, err := storage.db.Exec(`CREATE TABLE deferred_failure (user_id TEXT REFERENCES users(id) DEFERRABLE INITIALLY DEFERRED);
+	CREATE TRIGGER fail_commit AFTER INSERT ON tokens BEGIN INSERT INTO deferred_failure VALUES('missing-user'); END;`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result, err := storage.ExchangeCode(t.Context(), request, "rp", []byte(`{}`), true); err == nil || result.Access != "" {
+		t.Fatal("deferred constraint failure returned tokens")
+	}
+	if _, err = storage.db.Exec(`DROP TRIGGER fail_commit`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = storage.ExchangeCode(t.Context(), request, "rp", []byte(`{}`), true); err != nil {
+		t.Fatal("failed COMMIT consumed the authorization code", err)
+	}
+}
+
+func TestBusyWriterIsBoundedAndDoesNotConsume(t *testing.T) {
+	storage, path := fixture(t)
+	request := code(t, storage)
+	other, err := Open(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer other.Close()
+	locked, err := other.db.BeginTx(t.Context(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer locked.Rollback()
+	ctx, cancel := context.WithTimeout(t.Context(), 200*time.Millisecond)
+	defer cancel()
+	started := time.Now()
+	if _, err = storage.ExchangeCode(ctx, request, "rp", []byte(`{}`), true); err == nil {
+		t.Fatal("write succeeded through another immediate write transaction")
+	}
+	if time.Since(started) > 4*time.Second {
+		t.Fatal("busy writer was not bounded")
+	}
+	if err = locked.Rollback(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = storage.ExchangeCode(t.Context(), request, "rp", []byte(`{}`), true); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestClientBindingAndChangesInvalidatePendingState(t *testing.T) {
 	storage, _ := fixture(t)
 	pending := code(t, storage)
