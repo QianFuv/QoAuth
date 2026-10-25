@@ -245,6 +245,19 @@ html body .semi-tag { font-weight: 500; }
 
 /* Motion: one-shot entrances and short feedback only. */
 @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+/* Touch targets: at least 44px hit areas on phones and coarse pointers. */
+@media (max-width: 767px), (pointer: coarse) {
+  html body .semi-button, html body .semi-typography-action-copy, html body label.semi-radio-buttonRadioGroup, .brand, .text-link, .auth-footnote a { position: relative; }
+  html body .semi-button::after, html body .semi-typography-action-copy::after, html body label.semi-radio-buttonRadioGroup::after, .brand::after, .text-link::after, .auth-footnote a::after { content: ""; position: absolute; left: 50%; top: 50%; width: max(100%, 44px); height: max(100%, 44px); transform: translate(-50%, -50%); }
+  .text-link, .auth-footnote a { display: inline-block; }
+  html body .semi-input-wrapper, html body .semi-select { height: 44px; }
+  html body .semi-input-wrapper .semi-input { height: 42px; line-height: 42px; font-size: 16px; }
+  html body .semi-input-modebtn { min-width: 44px; }
+  html body .semi-input-textarea, html body .semi-select { font-size: 16px; }
+  .console-nav .semi-navigation-item { min-height: 44px; }
+  .form-actions, .banner-actions { row-gap: 20px; }
+}
+
 @keyframes fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .enter { animation: fade-in .32s var(--ease-out) both; }
 .console-page > .enter:nth-child(2) { animation-delay: .04s; }
