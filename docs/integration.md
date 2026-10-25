@@ -95,8 +95,15 @@ The runnable RP tests successful callback, refresh, UserInfo and logout, wrong
 state/nonce/subject and CSRF denial. Chrome separately exercised the actual production
 adapter, embedded UI and Go RP in one temporary local flow. Backend HTTP tests cover
 MFA enrollment/recovery/failure races more extensively than the browser smoke.
-Two app registrations use the same independent RP library; this is not evidence of
-two different RP implementations or OpenID conformance certification.
+The additional [Zitadel RP test](../internal/oidc/second_rp_test.go) generates its
+own authorization URL, performs S256 code exchange and remote-JWKS JWT validation,
+checks nonce/at_hash and subject-bound UserInfo, rotates refresh tokens and follows
+the discovered browser-confirmed logout endpoint. Wrong PKCE, nonce, access-token
+substitution, UserInfo subject and missing logout CSRF are rejected. Refresh expects
+an empty nonce for this OP. These are two RP implementations, but Zitadel's RP shares
+the OP module and both stacks use OAuth2/JOSE dependencies; independence is partial.
+The Zitadel EndSession helper cannot supply this browser confirmation proof and is
+not claimed interoperable. No OpenID conformance certification is asserted.
 
 The optional [browser harness](../internal/oidc/browser_test.go) runs only when both
 QOAUTH_BROWSER_STATE and QOAUTH_BROWSER_RP are set. Point the former to a temporary
@@ -120,8 +127,9 @@ Use an existing OIDC client library in each application. The primary path is a
 server-side app/BFF. A pure SPA cannot keep a client secret; its CORS/browser-token
 profile needs separate integration validation. Native/device flows, external IdPs,
 machine clients and back-channel logout are optional later work, not promised here.
-The second independent RP implementation, local OIDF profiles and native Linux/image
-runs remain documented release gates. M2.2 tests ordinary signing rotation with the
+A5's targeted local protocol checks passed with installed clients; the full OIDF
+harness was unavailable and was not installed. Native Linux/image runs remain open.
+M2.2 tests ordinary signing rotation with the
 standard RP: new kid triggers key retrieval; old public keys retire by persisted
 deadline; opaque access/refresh remain usable because AES is unchanged. A restore
 uses fresh signing trust and invalidates all token DB state. Cached old keys may

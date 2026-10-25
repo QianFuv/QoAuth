@@ -6,10 +6,12 @@ One Go process contains a React/TypeScript/Vite/Semi UI and uses one local SQLit
 database and one issuer. No external database, Redis, Node runtime or enterprise
 tenant/SCIM/LDAP/SAML infrastructure is required.
 
-**Status, 2026-10-25:** M2.1 provides local accounts, password/TOTP/recovery,
-sessions, applications, consent, management UI/API and standard OIDC code+S256.
-M2.2 adds installation locking, consistent backup, isolated restore/reconciliation,
-signing rotation and bounded cleanup.
+**Status, 2026-10-25:** The approved lightweight product slice is implemented:
+local users, password/TOTP/recovery, sessions, applications/scopes/consent, OIDC
+code+S256, management UI/API and redacted activity. Maintenance includes installation
+locking, consistent backup, isolated restore/reconciliation, signing rotation and
+bounded cleanup. Final closure adds MFA-protected administrator password reset,
+disabled-application review, consistent password rules and bounded readiness.
 The real service is `cmd/qoauth`; `internal/fixture` is test-only and is not imported
 by it. All validation used temporary synthetic state. This is not a production
 readiness or OpenID certification claim.
@@ -21,7 +23,8 @@ validates; no system service, deployment, real owner or external binding was cre
 
 ## Build and check
 
-Use the existing Go 1.26.10 and Node 24.22.1/npm 12.2.0 toolchain. Build assets first:
+Use Go 1.26.10 and Node 24.22.1/npm 12.2.0; local packaging also uses Python 3.12.15.
+These tools were already available. Build assets first:
 
 ```powershell
 Push-Location web
@@ -35,15 +38,26 @@ go vet ./cmd/... ./internal/... ./examples/...
 
 With an existing C compiler, run the same package set with `CGO_ENABLED=1` and
 `go test -timeout 180s -race`. Explicit paths avoid traversing `web/node_modules`.
-The final M2.2 Windows race run passed 127 tests/subtests across eight packages;
-five opt-in helper/browser entrypoints were skipped in the ordinary suite. Parent
-tests invoke the process helpers; the browser harness was separately executed. See
-[exact evidence and limits](docs/plan/2026-10-25-qoauth-overall.md#final-m22-evidence-2026-10-25).
+The final Windows race run passed 135 tests/subtests across eight packages, with
+six opt-in/helper skips. Process helpers run through their parent tests; browser and
+600-second load harnesses were also executed separately. Coreos and Zitadel RP flows
+pass against the production adapter. See [final evidence and limits](docs/plan/2026-10-25-qoauth-overall.md#final-bounded-delivery-evidence-2026-10-25).
 
-`scripts/build.ps1` builds two single-file executables under ignored `dist/`.
-No adjacent assets directory is required. Builds retain symbol tables for precise
-binary vulnerability scans; debug information is omitted. The container has a
-separate frontend build stage and runs as a non-root user, but has not been run here.
+`scripts/build.ps1` builds both single-file executables and versioned local ZIPs,
+SPDX 2.3 SBOMs, original license/NOTICE files, hashes and an exact-commit source ZIP
+under ignored `dist/`. Use `-UseInstalledFrontend` to reuse already installed locked
+packages. Final packaging requires a clean checkout and matching unmodified binary
+build metadata; output directories must be new. Explicit `--allow-dirty` packaging
+is always labeled `.dirty` and never includes a clean source archive.
+
+No adjacent UI directory is required. Symbol tables remain for precise binary scans;
+debug information is omitted. The final local preview is
+[0.1.0-dev.826200d48959](dist/0.1.0-dev.826200d48959/manifest.json), built at
+`826200d48959bef3e23f554fc39f73ea1635a149`; subsequent evidence documentation does
+not relabel its source revision. Each platform directory contains its executable,
+SBOM, notices and manifest. `build-development/inventory.json` separates the wider
+build/test graph. The source ZIP includes Docker/Compose recipes and the Go RP
+example. No image was built; these are local previews, not published releases.
 
 ## Service entry points
 
@@ -67,6 +81,18 @@ proxy that preserves the canonical Host. When proxying, set `--trusted-proxy <IP
 and have that one proxy overwrite `X-Real-IP` with exactly one client IP. No other
 forwarded header selects the issuer or bypasses throttling. Explicit local testing
 may use `--development-http` with numeric loopback issuer/listener addresses only.
+
+GET `/readyz` returns only `{"ready":true}` (200) or `{"ready":false}` (503), with
+no cookie and a one-second database deadline. It checks persisted issuer/key binding
+and maintenance/quarantine state. Use the canonical Host even for a proxy-local
+probe. It is not an external TLS check or full database integrity scan.
+
+Administration can reset an ordinary account password after fresh administrator
+MFA; it preserves enrolled MFA and revokes previous sessions/codes/grants. Disabled
+applications have a read-only review action; replacement is explicit and never
+restores old grants or reveals a stored secret. Enter one callback/logout URL per
+line; literal commas are preserved. New passwords use the same NFC-normalized
+15-character/1024-UTF-8-byte rules in CLI/API/UI.
 
 `keys.json` holds the signing private key and AES root secret under host permissions;
 TOTP seeds in SQLite are encrypted. It is sensitive plaintext key material, not a
@@ -105,13 +131,16 @@ does not authenticate a maliciously replaced whole backup. Protect the full dire
 See the [operating and recovery procedure](docs/architecture.md#maintenance-and-recovery-runbook)
 for client/account reconciliation, interrupted operations and version restrictions.
 
-[Remaining product work and release gates](docs/roadmap.md#remaining-bounded-work)
-are explicit. Linux/image runtime, independent interoperability/conformance, load,
-accessibility and distribution checks remain open; no production-ready claim.
+[Remaining release gates](docs/roadmap.md#remaining-bounded-work) are finite:
+native Linux/image execution and image-specific provenance/notices, QoAuth's own
+source-license choice, and real installation/proxy review. Basic accessibility,
+local load and a compatible M2.2-to-current restore drill passed within recorded
+limits. Full OIDF certification, broad capacity claims and a comprehensive
+accessibility/security audit are not claimed. No further feature stage is scheduled.
 
 ## Review package
 
-- [Single execution checklist, evidence and next scoped proposal](docs/plan/2026-10-25-qoauth-overall.md)
+- [Single execution checklist and final evidence](docs/plan/2026-10-25-qoauth-overall.md)
 - [Product scope](docs/product.md), [roadmap](docs/roadmap.md), [architecture and operations](docs/architecture.md)
 - [Threat model and remaining release gates](docs/security.md)
 - [Dependencies, advisories and license obligations](docs/dependencies.md)

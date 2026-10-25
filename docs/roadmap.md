@@ -1,8 +1,8 @@
 # Short roadmap and acceptance conditions
 
-Review revision: 4, 2026-10-25. The lightweight scope still supersedes the earlier
-team/B2B/enterprise roadmap. Parent A4 authorized M2.2 locally. Estimates are rough
-effort for one experienced engineer, not delivery promises.
+Review revision: 5, 2026-10-25. Parent A5 approved the final bounded product and
+quality closure. The lightweight scope still supersedes enterprise-oriented plans.
+The estimates below are historical planning ranges, not current delivery promises.
 
 | Milestone | Effort estimate | Result |
 |---|---|---|
@@ -11,18 +11,14 @@ effort for one experienced engineer, not delivery promises.
 | M2 Working core | 3-5 engineer-weeks | Local users, apps/scopes, code+PKCE, SSO/sessions/revoke, TOTP/recovery, simple admin UI/logs |
 | M3 Validate and package | 2-3 engineer-weeks | Protocol/security regression evidence, Go integration example, native binaries/image smoke, backup/restore and rotation guide |
 
-M0/M1/M2.1 were accepted. M2.2 minimal maintenance is implemented and locally
-verified for parent review: consistent snapshots, isolated restricted restore,
-persisted signing rotation, installation locking and bounded cleanup. The current
-program remains one real Go authentication service with SQLite and embedded UI;
-fixture code remains test-only. Final M2.2 evidence is 127 passing Windows race
-tests/subtests across eight packages, final binary maintenance smoke, standard RP
-regressions, browser client replacement, target builds and dependency scans.
-[Exact commands and limitations](plan/2026-10-25-qoauth-overall.md#final-m22-evidence-2026-10-25).
-
-One independent RP library is tested, including multiple app registrations. A second
-implementation, local conformance profiles and native Linux/image runs remain open.
-All estimates above are planning ranges, not completion or production promises.
+M0/M1/M2.1/M2.2 were accepted; A5's four usability/operations changes and available
+local quality checks are now complete for parent acceptance. One real Go service,
+SQLite and embedded UI remain the whole runtime. Final Windows race evidence is
+135 passing tests/subtests in eight packages; six opt-in/helper entries skip in the
+ordinary run. Browser/load/compatible-version restore and final Windows binary
+smoke ran separately. Two RP implementations pass, with the shared Zitadel OP/RP
+dependency limitation recorded. Native Linux/image execution remains open.
+[Exact commands and limitations](plan/2026-10-25-qoauth-overall.md#final-bounded-delivery-evidence-2026-10-25).
 
 ## M0 document acceptance
 
@@ -57,7 +53,7 @@ Diagnose the concrete issue, then present the smallest design change if needed.
 |---|---|
 | A1 | User create/disable/password change works; unknown/disabled accounts fail; password policy, hashing, throttling and enumeration-resistance tests pass |
 | A2 | TOTP needs enrollment proof and fresh authentication; OTP/recovery-code reuse fails; password reset cannot disable MFA; last administrator cannot be removed |
-| A3 | Two independent RP libraries pass code+PKCE; wrong/missing PKCE, wrong client/redirect, replayed code, bad nonce/issuer/audience/signature fail |
+| A3 | Coreos and Zitadel RP implementations pass code+PKCE; disclose their shared OAuth2/JOSE and OP/RP dependencies; wrong/missing PKCE, wrong client/redirect, replayed code and bad token claims fail |
 | A4 | Application scopes/audiences/assignments are enforced server-side; consent cannot grant excess access; public clients need no embedded secret |
 | A5 | Two applications reuse eligible SSO; prompt=login, prompt=none and max_age behave correctly; app sessions are distinguished from QoAuth sessions |
 | A6 | Session revoke, user disable and logout reject subsequent refresh/introspection after the transaction commits; RP-initiated logout checks context and exact return URI |
@@ -68,7 +64,7 @@ Diagnose the concrete issue, then present the smallest design change if needed.
 
 | ID | Observable acceptance |
 |---|---|
-| R1 | Selected local OpenID Basic OP/Config OP and supported logout tests pass at recorded suite version; this is not formal certification |
+| R1 | A5 targets locally executable discovery/code/PKCE/JWT/UserInfo/refresh/logout checks with pinned clients; full OIDF suite was not available and was not installed; no certification claim |
 | R2 | All required threat regressions pass; reachable critical/high advisory findings resolved; focused independent authentication/recovery review completed |
 | R3 | Native Windows/Linux and Linux amd64 Docker smoke pass: embedded UI, login, persistence/restart, non-root container, graceful shutdown, correct permissions |
 | R4 | Consistent backup restores in maintenance mode; old grants stay invalid; reconcile revoked client credentials/callbacks and signing-key state; rotation works before/after restart |
@@ -82,36 +78,41 @@ and environment; do not install system components or claim a pass.
 
 ## Remaining bounded work
 
-Product functionality is close to the agreed small-system boundary. The next
-optional internal review slice should close only these concrete usability gaps:
+The four approved product changes are complete: consistent new-password policy,
+MFA/CSRF-protected administrator reset, secret-free disabled-application review
+and explicit replacement, and minimal readiness. No additional product functionality
+is required by this closure. Existing maintenance and security semantics remain.
 
-| Item | Small implementation boundary | Acceptance / likely files |
-|---|---|---|
-| Owner-assisted password reset UI | Expose the existing authorized reset operation for a selected non-owner; preserve MFA and revoke prior state | Fresh admin MFA/CSRF, reset-to-old-login race and browser checks; `web/src/admin.tsx`, `internal/oidc/api.go` and focused tests |
-| Disabled-client recovery visibility | Show disabled client IDs/configuration without secret verifiers and prefill the existing reviewed replacement form | No change to generation/assignment invalidation; fresh secret only on explicit replacement; `internal/store/identity.go`, `internal/oidc/api.go`, `web/src/admin.tsx` |
-| Password blocklist and small operational readiness contract | Assess the existing small local list and hashing budget; define a minimal non-sensitive readiness check rather than a monitoring system | Bounded password rejection/cost tests and failure-state checks; `internal/identity`, `internal/oidc`, existing docs |
+| Quality closure | Actual evidence / limit |
+|---|---|
+| Second RP | Coreos plus pinned Zitadel RP production-adapter tests; partial implementation independence, not certification |
+| Local protocol checks | Discovery, code+S256, exact redirects/client/scopes, JWT claims, UserInfo, refresh/replay and confirmed logout; no installed OIDF suite |
+| Modest load | 100 synthetic users/10 clients, 10 non-password requests/s for 600 seconds, 6,000 successes; p95 2.855 ms on this Windows host |
+| Password cost | 30 sequential Argon2id samples, p50 23.264 ms/p95 26.876 ms; four hash slots; no capacity claim |
+| Browser/accessibility | Owner MFA, reset, disabled-client review/cancel and lossless comma URLs, standard RP/logout, labels/keyboard/390px layout; not WCAG certification |
+| Restore drill | Prior M2.2 executable to current code, both schema 7, real ten-minute quarantine and temporary cleanup; no arbitrary old-schema/downgrade support |
+| Packaging | Two clean revisioned binaries/ZIPs, source ZIP, artifact-specific SPDX/notices/checksums and separate build inventory; local only |
 
-These are proposed follow-ups, not implemented by M2.2 or silently approved new
-features. They need no new infrastructure. Work/tests can remain in the repository
-with disposable credentials; actual accounts, deployment or host changes still need
-specific authority. Use this same execution checklist for the parent's next decision.
+Remaining release gates and limits are separate from feature expansion:
 
-Release gates remain finite and separate from product feature expansion:
+- **Linux/image execution:** existing Ubuntu WSL and Docker Desktop installations
+  are present, but no WSL distribution was running and the Docker Linux-engine pipe
+  was absent. Native Linux and Docker build/run/restart/permissions/maintenance remain
+  unexecuted. Starting the Ubuntu WSL runtime or Docker Desktop/Linux engine would
+  start host runtime/services and needs specific authorization; neither was started.
+  Complete image provenance/SBOM/CA-certificate notices with the actual image.
+- **License decision:** QoAuth has no selected source license. Artifact NOASSERTION
+  is not permission to distribute. Preserve the shipped notices and review the
+  recorded build-only optional-package gaps before redistributing build tools.
+- **Real installation:** trusted host directories, existing HTTPS proxy and issuer,
+  accounts/keys and backup custody require a concrete installation review; none were
+  configured for the user. The four-entry local password blocklist is intentionally
+  limited. Its adequacy must be assessed for real exposure, without claiming breach-
+  corpus coverage. Full OIDF, extensive fuzzing, a broad accessibility/security audit,
+  2-vCPU/2-GiB capacity and physical power-loss behavior are not established here.
 
-- Native Linux amd64 and actual non-root Docker image build/run/restart, including
-  file ownership, OS lock, embedded UI, restore/rotation and mount permissions. No
-  usable permitted runtime was exercised here; do not start/install host components
-  merely to satisfy the gate.
-- A second independent standard RP and selected local OIDF profiles; pin a separate
-  conformance harness and obtain any required runtime/setup authority. No public
-  callback, SaaS trial or certification claim.
-- Recorded small-team load/hash measurements and accessibility/keyboard review.
-  Synthetic SQLite COMMIT/full-disk/locking failures already pass; this does not
-  establish capacity or physical power-loss durability.
-- Cross-version upgrade/rollback drill with a compatible snapshot binary, final
-  NOTICE/license inventory, SBOM and reproducible artifact checksums. QoAuth's own
-  source license remains a maintainer decision before distribution. No publishing
-  or deployment is authorized by preparing these artifacts.
+No SaaS trial, public callback, new conformance infrastructure, publication or
+production deployment is needed to accept this bounded local implementation.
 
 ## Optional work and stop line
 

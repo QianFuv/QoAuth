@@ -98,3 +98,13 @@ No private source, credential or file content was sent to a research service.
 
 This survey is deliberately not a complete license audit, vendor SLA comparison,
 paid-entitlement guarantee, benchmark, penetration test or conformance report.
+
+## Final packaging evidence sources
+
+Checked 2026-10-25: official [SPDX 2.3.1 JSON schema](https://raw.githubusercontent.com/spdx/spdx-spec/v2.3.1/schemas/spdx-schema.json)
+and [Vite build.license / modulepreload](https://vite.dev/config/build-options.html).
+Installed Vite 8.3.5 source, final executable build metadata, original installed
+license/NOTICE bytes and generated manifests supply artifact-specific evidence;
+package-lock/go.sum alone do not establish linked runtime components. The final
+[dependency inventory](../dependencies.md#artifact-inventories-and-preserved-notices)
+records scope, supplements and remaining license/image boundaries.

@@ -1,10 +1,11 @@
 # Focused threat model, tests and risks
 
-Review revision: 4, 2026-10-25. Single installation, local users and clients.
-A4 authorized M2.2; 127 scoped Windows race tests/subtests, temporary browser flows
-and final-binary maintenance/restart have executed. The [checklist](plan/2026-10-25-qoauth-overall.md#final-m22-evidence-2026-10-25)
-records exact evidence. The full matrix below remains a release contract, not a
-claim that every fuzz/conformance/platform gate has passed.
+Review revision: 5, 2026-10-25. Single installation, local users and clients.
+A5's final scoped Windows race run passed 135 tests/subtests; browser, second RP,
+load, compatible-version restore and binary maintenance/restart ran separately.
+The [checklist](plan/2026-10-25-qoauth-overall.md#final-bounded-delivery-evidence-2026-10-25)
+records actual results. This matrix does not claim exhaustive fuzzing, certification,
+physical power-loss testing or unexecuted Linux/container checks.
 
 ## Assets and boundaries
 
@@ -73,17 +74,17 @@ initialized database, and refuses a missing database beside existing keys.
 Unit/integration tests cover S01-S12, SQLite concurrency and failure injection.
 Go checks include scoped tests/vet/format, race tests where shared state exists,
 and govulncheck on source and binaries. Browser tests cover real login/admin/
-recovery with CSRF/CSP/cookie/keyboard checks. Run local OpenID Basic OP/Config OP
-and supported RP-initiated logout profiles using synthetic users. Test against two
-independent RP implementations; a library certification badge is not QoAuth
-certification. Retain exact versions, commands, results and unresolved failures.
+recovery with CSRF/CSP/cookie/keyboard checks. Under A5, execute available targeted
+OIDC checks with synthetic users and pinned coreos/Zitadel clients. Their shared
+library dependencies limit independence; a library badge is not QoAuth certification.
+Full OIDF profiles were not run. Retain exact versions, commands, results and limits.
 [OpenID OP testing](https://openid.net/certification/connect_op_testing/),
 [Go security guidance](https://go.dev/doc/security/best-practices).
 
-Use a separate local conformance harness after approval, not real SaaS accounts,
-public callbacks or production credentials. The suite has separate runtime and
-license needs; do not install Docker/Java/databases or alter the host environment
-under a documentation authorization. Native OS/image smoke and backup/rotation
+A separate full conformance harness is optional beyond this bounded closure,
+not an instruction to add infrastructure. No real SaaS accounts, public callbacks
+or production credentials are used. The suite has separate runtime/license needs;
+do not install Docker/Java/databases or alter the host to manufacture a test pass. Native OS/image smoke and backup/rotation
 tests remain mandatory for their deliverable, not replaced by cross-compilation.
 
 ## Small risk register
@@ -131,11 +132,12 @@ origins; null/foreign origins remain rejected. OAuth token endpoints use their o
 client/PKCE checks rather than browser cookies. Tokens and full request bodies are
 not logged; protocol logs redact arbitrary attributes and messages.
 
-Remaining real-use gates: second independent RP implementation and selected local
-OIDF conformance profiles; native Linux/image execution; cross-version restore/upgrade,
-reference load/password-cost measurements, comprehensive accessibility and distribution
-notices/SBOM. M2.2 covers same-version backup/restore, rotation, retention and synthetic
-disk-full/transaction failures on Windows.
+A5 adds the second RP, compatible M2.2/current schema-7 restore drill, local load/
+password-cost measurements, basic browser accessibility and artifact notices/SBOM.
+Remaining limits are native Linux/image execution and image provenance, own source
+license, comprehensive accessibility/security coverage, full OIDF and real-exposure
+assessment of the deliberately small password blocklist. No capacity or production
+security verdict follows from the bounded Windows evidence.
 Private key material is held in a protected local file, not hardware-backed storage;
 host administrators remain trusted. No blanket production-ready claim is warranted.
 
@@ -178,3 +180,20 @@ family/token deadlines, in bounded child-first transactions. Still-valid replay
 revokes the family even across cleanup/restart; expired ancestors are rejected
 without revoking a live successor. Neither retained rows nor passing tests imply
 family-lifetime detection of every expired stolen credential.
+
+## Final bounded review closure
+
+Administrator reset retains fresh-MFA/CSRF checks, preserved user MFA and atomic
+session/code/grant invalidation; new race/failure tests and browser flows cover the
+exposed UI. Disabled-client settings use a public-field projection without secret
+verifiers; replacement never revives prior grants. Independent review identified
+React key collision for client ID `new` and comma-splitting callback expansion.
+Distinct create/review keys and newline URL lists corrected both; browser submit/
+disable/reread proved exact round trips. Readiness returns generic bounded state.
+
+A packaging review found preview-mode provenance could mislabel a modified binary.
+The metadata-interposition regression failed before the two-line policy correction
+and passed after: explicit preview always carries .dirty and excludes source ZIPs.
+Final artifacts use the default clean mode. Static reviews are not independent test
+execution. Runtime Go code/dependencies and emitted JS/CSS stayed unchanged during
+packaging; the earlier final race/browser evidence remains applicable.

@@ -3,11 +3,11 @@
 Protocol Version: 2026-09-05
 Protocol Revision: autonomous-execution-git-flow-v2
 
-Revision 8, 2026-10-25. Status: M2.2 accepted; final bounded product/quality
-closure authorized by A5 and in progress. Parent A4 accepts protected plaintext key custody and the minimal
-maintenance scope below. Linux native/image runs remain
-unverified. There is no outstanding end-user approval gate for this scope. This is the single
-execution checklist; do not create another plan for each small step.
+Revision 9, 2026-10-25. Status: A5 bounded implementation and available local
+verification complete; submitted for parent acceptance. Native Linux/image runs
+remain unverified. No end-user internal-plan approval wait or new feature phase is
+introduced. This is the single checklist; earlier stage records below are historical.
+The final evidence section owns current results and limits.
 
 ## Outcome and boundaries
 
@@ -388,7 +388,7 @@ twice; Chrome completed the equivalent flow. Test servers and RP child processes
 were stopped, the Chrome task tab closed, and disposable browser state removed.
 
 The source scan and final binary scans retain the unimported-module warning rather
-than suppress it. See [dependency evidence](../dependencies.md#selected-set-and-m22-evidence)
+than suppress it. See [dependency evidence](../dependencies.md#selected-set-and-final-local-evidence)
 for GO-2026-5932 and the stripped-binary scanner fallback. The module as a whole is
 not described as vulnerability-free. The final binaries have the following actual
 hashes; these supersede the historical M1 executable hashes, not its old evidence.
@@ -696,7 +696,7 @@ This supersedes the prior proposal wait. No further internal-plan approval is ne
 | C5 | Second pinned RP implementation and focused local protocol checks | test(oidc): verify a second standard relying party | Committed 9c4855e |
 | C6 | Existing phase-version restore/upgrade drill, bounded load, browser/accessibility evidence | test(validation): exercise release closure scenarios | Committed 5312400 |
 | C7 | Versioned local binaries, graph/NOTICE/license/SBOM inventory and packaging script | build(distribution): assemble versioned local artifacts | Committed 5d56cd5; preview correction below |
-| C8 | Actual evidence, runbook and finite remaining gates; no next feature expansion | docs(validation): close bounded delivery checks | Pending |
+| C8 | Actual evidence, runbook and finite remaining gates; no next feature expansion | docs(validation): close bounded delivery checks | Done; commit containing this evidence is identified by its exact message |
 
 A5 authorizes necessary in-scope fixes and their separate logical commits; record
 any such correction before committing. Preserve explicit paths, index diff and
@@ -812,3 +812,103 @@ The first clean build was rejected because the local validation import created a
 untracked Python bytecode file; only that generated file/directory was removed, then
 the clean build passed. No provenance check was bypassed. A corrected clean revision
 will supersede the initial 5d56cd5 local package; no artifact is published.
+
+## Final bounded delivery evidence, 2026-10-25
+
+A5's four product changes and available quality closure are complete for parent
+acceptance. No additional feature plan is proposed. The real program remains
+cmd/qoauth; internal/fixture is test-only. All keys/users/clients/state used for
+validation were isolated synthetic fixtures, and every task-owned service stopped.
+No real account, persistent real access, external binding, service/security change,
+push, release or deployment occurred. The documented Linux/image gap is unchanged.
+
+### Actual final checks
+
+| Check | Executed result and evidence |
+|---|---|
+| `go test -count=1 -timeout 180s -race -json ./cmd/... ./internal/... ./examples/...` | 135 tests/subtests pass, six helper/opt-in skips, eight packages, zero failures; .cache/final-race.json. Process parents invoke helpers; browser/load ran separately |
+| `go vet ./cmd/... ./internal/... ./examples/...` | Passed on final Go sources; packaging/docs do not alter those inputs |
+| `go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 -test ./cmd/... ./internal/... ./examples/...` | Zero affected symbols/imported packages; one non-imported OpenPGP module advisory; .cache/final-govulncheck.txt |
+| `npm audit --json` and `npm run build` | Zero audit findings; TypeScript and Vite pass; JS 278.09 kB, CSS 52.99 kB, unchanged asset hashes after inventory emission |
+| Two RP implementations | Production SQLite OP plus coreos and Zitadel client stacks; code/S256, JWT/nonce/at_hash/UserInfo subject, refresh, negative boundaries and browser-confirmed logout pass; shared-dependency and EndSession-helper limits in integration.md |
+| Browser | Owner password/TOTP, reset/MFA semantics, cleared password inputs, disabled `new` review/cancel/no-write, exact comma URL round trip, standard RP login/consent/UserInfo/logout; .cache/final-browser-validation.json and .cache/final-admin.png |
+| Basic accessibility | One main/h1, labeled app fields, visible keyboard focus, 390x844 layout without horizontal overflow; not full WCAG. Existing extensions altered colors and emitted unrelated CSP errors; none changed |
+| Local load | `QOAUTH_LOAD_SECONDS=600`, selected `TestModestLocalLoad` with Go JSON output and bounded timeout; 6,000 successes at 10/s, p50 1.026 ms/p95 2.855 ms/max 16.363 ms; .cache/final-load.json |
+| Password cost | .cache/password-cost.go calls real PasswordHash 30 times sequentially; p50 23.264 ms/p95 26.876 ms/max 26.896 ms; .cache/final-password-cost.json |
+| Compatible-version restore | `python scripts/verify-upgrade.py --previous .cache/prior-m22/qoauth-windows-amd64.exe --current .cache/final-verify.exe`; rerun exit 0, every assertion and temporary cleanup pass; .cache/final-upgrade-rerun.json |
+| Clean final build | `./scripts/build.ps1 -UseInstalledFrontend` at clean 826200d; Windows/Linux amd64 CGO=0, embedded assets, symbol tables retained; .cache/final-build.txt |
+| Final binary scans | govulncheck v1.9.0 `-mode=binary` against both actual final dist binaries; zero affected symbols/imported packages, same unused-module advisory; .cache/final-windows-amd64.exe-vuln.txt and .cache/final-linux-amd64-vuln.txt |
+| Final Windows binary | .cache/final-binary-smoke.py passed init, embedded login/discovery/readiness, restart/JWKS, busy-lock backup denial, consistent snapshot, RSA rotation/AES continuity, fresh restore/owner recovery/quarantine, count-only cleanup and secret-free output; temporary directories/processes removed |
+| Artifact checks | Both SPDX documents pass official 2.3.1 JSON schema with Test-Json; all notice/manifest/archive hashes and ZIP integrity checked, Linux ZIP executable bit preserved, no runtime fixture executable or private state included |
+| Packaging failures | Default dirty checkout and missing required notice rejected; modified-binary/clean-checkout metadata regression failed before and passed after 826200d; explicit preview always .dirty without source ZIP |
+| Container configuration | `docker compose config --quiet` passed; no daemon required, no image build/run |
+| Documentation | Eleven tracked Markdown documents checked for UTF-8/local links/anchors and unresolved markers; git diff --check passed; current evidence supersedes historical stage status |
+
+The load host was Windows amd64, i9-12900H (20 logical CPUs), 31.7 GiB memory.
+One request was in flight; the mix was readiness/discovery/authenticated introspection
+with periodic refresh, not concurrent password login. Main-file database_bytes omits
+WAL; memory growth and 2-vCPU/2-GiB capacity were not established. Four Argon2 slots
+bound hashing; measured sequential cost is not a throughput guarantee.
+
+The restore drill used earlier M2.2 Windows artifact SHA
+6418e7e7516c912494165e52e42083abb438f469d8a095f20b646507a740ff1b
+and current-code verification artifact d34dadbe1bbf4160d924c55c989cf81a14c310a94b18482c9ddec9690b5cc5ce.
+Both schemas were 7. It exercised a real ten-minute quarantine, retained source bytes,
+disabled restored clients, invalid old recovery/session state and restricted recovered
+owner. Production Go code is unchanged between that verification build and final
+artifacts; final binary maintenance smoke separately confirms packaging/runtime wiring.
+There is no claim of arbitrary historical-schema migration or destructive downgrade.
+
+Independent final product review found two P2 UI cases, fixed in af185b8 and verified
+in the browser. Independent packaging review found one P2 preview-label case, safely
+reproduced and fixed in 826200d. Reviews were static; actual runs above belong to the
+primary agent. No unresolved reported blocker remains in these bounded findings.
+
+### Versioned local artifacts
+
+Final code/build revision: **826200d48959bef3e23f554fc39f73ea1635a149**.
+Version: **0.1.0-dev.826200d48959**. Source and binary provenance use this clean
+revision; this later documentation commit does not relabel them. Earlier 5d56cd5
+packages and .cache dirty archives are superseded validation artifacts, not this handoff.
+
+| Artifact under dist/0.1.0-dev.826200d48959 | SHA-256 |
+|---|---|
+| qoauth-0.1.0-dev.826200d48959-windows-amd64.zip | efe854a9e7458142d4fe360f78f710a955a73631953d8ad96a66b1ed6122e57a |
+| qoauth-0.1.0-dev.826200d48959-linux-amd64.zip | a151b5f391d62870ab96dc74dc360a66c04e570b50e3064089f269a10f080ee5 |
+| qoauth-0.1.0-dev.826200d48959-source.zip | ecc08bfd13f11544594960a2b8a458675d1ff832d03ce9ec42c87daa391477a5 |
+| windows-amd64/qoauth-windows-amd64.exe | f7c3793d6aaab7b8bc677a21c8847d14113374eb43b9dbc5fdc126aa3f94e5e3 |
+| linux-amd64/qoauth-linux-amd64 | 5da3b258fab86e6328ee40c8c89e788cd64c027968ae818e844cae13d3a151d3 |
+
+The [root manifest](../../dist/0.1.0-dev.826200d48959/manifest.json) records archive
+sizes and hashes. Each platform directory/ZIP has executable, sbom.spdx.json,
+THIRD_PARTY_NOTICES.txt, LICENSES, notice-index.json, build-info.json,
+frontend-inventory.json, manifest.json and RELEASE-GATES.txt. Windows/Linux record
+30/29 actual Go dependency modules, 43/42 SPDX packages and 60/59 notice records;
+both include eleven frontend/helper/CSS components. build-development/inventory.json
+separately records 273 npm entries (248 installed) and 66 resolved Go modules.
+The exact source ZIP contains source/tests, Docker/Compose recipes, docs and the RP
+example, not node_modules, cache, live databases or credentials. No image exists.
+
+### Finite remaining gates and handoff
+
+- Native Linux execution and Docker image build/run/non-root persistence/maintenance
+  remain unverified. Existing Ubuntu WSL and Docker Desktop are installed, but no
+  distribution was running and docker info failed on the absent Linux-engine pipe.
+  Concrete future actions would be starting Ubuntu WSL or Docker Desktop/Linux
+  engine; those host runtime/service actions were not authorized or executed.
+- Actual image provenance, CA-certificate notices and image SBOM require the image.
+  QoAuth's own source-license choice remains unresolved; NOASSERTION/CC0 metadata is
+  not a product license. No publication is authorized or performed.
+- Real host/proxy/account/key setup is outside synthetic tests. Full OIDF testing,
+  extensive fuzzing, broad accessibility/security audit, small-host capacity and
+  physical power-loss durability are not claimed. The four-entry local password
+  blocklist needs real-exposure assessment; no breached-password corpus is implied.
+- The approved product slice needs no new enterprise feature or infrastructure.
+  Parent acceptance is the next decision; no internal plan is delegated back to an
+  end-user approval wait.
+
+A5 logical commits: f0e2227 authorization, d50d81d policy, 6f4499e reset UI,
+54e34a5 disabled-client review, b240fc3 readiness, 9c4855e second RP, af185b8 lossless
+review correction, 5312400 quality harnesses, 5d56cd5 packaging, 826200d preview
+provenance correction, and the current docs(validation): close bounded delivery
+checks evidence commit. Main only; no branch/worktree, push, release or deployment.

@@ -1,10 +1,10 @@
 # Lightweight product scope
 
-Review revision: 4, 2026-10-25. The lightweight scope remains authoritative.
-A4 authorized M2.2 local maintenance. Core authentication plus backup/restore,
-rotation and bounded retention have isolated Windows evidence in the checklist.
-Remaining product usability and release verification are listed in the roadmap;
-conformance and native Linux/image execution remain open.
+Review revision: 5, 2026-10-25. The lightweight scope remains authoritative.
+A5's bounded product closure is implemented and locally verified for parent review.
+Core identity, maintenance, administrator reset, disabled-client review and readiness
+remain one small runtime. Targeted protocol checks passed; full certification and
+native Linux/image execution are not claimed. See the finite roadmap gates.
 
 ## Intended result
 
@@ -85,12 +85,15 @@ limit and current account/assignment checks. Ordinary interactive logout revokes
 the associated family. Sensitive administrative changes require authentication
 within five minutes. These are product policies, not standards-mandated defaults.
 
-Use a modest reference fixture of 100 users and 10 applications. Measure 10
-non-password protocol requests/second for 10 minutes on a recorded 2-vCPU/2-GiB
-machine, with no server errors or unbounded memory growth; record p95 rather than
-invent a capacity guarantee. Benchmark password hashing independently with a
-bounded concurrency budget. A larger supported scale requires actual evidence.
+The actual modest fixture used 100 synthetic users/10 applications and 10
+non-password requests/second for ten minutes: 6,000 successes, p95 2.855 ms. It ran
+on Windows/i9-12900H/20 logical CPUs/31.7 GiB, not a constrained 2-vCPU/2-GiB host.
+It measured readiness/discovery/authenticated introspection with periodic refresh;
+it does not establish password-login throughput, memory stability or maximum scale.
+Thirty sequential Argon2id hashes measured p50 23.264 ms/p95 26.876 ms; concurrency
+is bounded to four slots. A smaller-host capacity guarantee needs actual evidence.
 
-Current handoff: M2.2 implementation and isolated verification are complete for
-parent review. Remaining product and release items are bounded in the roadmap.
-Real credentials, external bindings and deployment remain outside this task.
+Current handoff: A5's implementation and available isolated verification are complete
+for parent review, with no new feature stage scheduled. Native Linux/image and
+licensing/real-installation gates remain explicit. Real credentials, external
+bindings and deployment remain outside this task.

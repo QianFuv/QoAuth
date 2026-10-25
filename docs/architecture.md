@@ -1,6 +1,6 @@
 # Lightweight architecture and minimal operations
 
-Review revision: 4, 2026-10-25. Parent A4 authorized M2.2 maintenance.
+Review revision: 5, 2026-10-25. Parent A5 authorized final bounded closure.
 The lightweight scope is unchanged. Implemented behavior is distinguished below
 from remaining operations/release targets; no production-readiness claim is made.
 
@@ -178,6 +178,12 @@ without it use a reviewed owner-assisted recovery path and local recovery codes,
 not a fabricated successful email reset. No automatic firewall changes, service
 installation, public binding, default credentials or real SMTP account creation.
 
+GET `/readyz` is a minimal one-query, one-second readiness contract: available
+SQLite, matching active key binding and persisted issuer, no maintenance/quarantine.
+It returns only ready true/false, no cookie or sensitive details, and rejects non-GET
+methods. Canonical Host checks still apply. It does not migrate, repair keys or scan
+all database integrity; use the maintenance validator for snapshots.
+
 ## Maintenance and recovery runbook
 
 These are implemented commands, validated only against disposable synthetic data.
@@ -218,7 +224,12 @@ For a future upgrade, stop and back up using the old compatible executable, reta
 that executable and verify its restore path before upgrading a separate test copy.
 This binary rejects older snapshot schemas rather than silently migrating inputs.
 Live migrations remain ordered/checksummed; no destructive down-migration exists.
-A cross-version upgrade/rollback drill remains a release gate.
+The isolated drill used the earlier M2.2 executable to create a schema-7 snapshot
+and current code to restore it into a new directory, preserving the original bytes
+and enforcing the real ten-minute quarantine. Both versions use schema 7; this is
+not an arbitrary old-schema migration or destructive downgrade test. A rollback
+must retain a compatible old executable/snapshot and use the same reviewed
+new-directory restore procedure; never run an older binary over migrated live state.
 
 ### Restore and reconcile
 
@@ -250,13 +261,14 @@ A cross-version upgrade/rollback drill remains a release gate.
    `recover-user --data-dir <restored> --username <name> --confirm` with a new password.
    It drops old administrator status, factor/codes and app access; the user must
    enroll a new factor. Reassign only reviewed application access afterward.
-6. In Administration, choose **Replace a disabled application with reviewed settings**,
-   using its recorded ID and complete reviewed settings. Confidential clients get
-   a new secret once; old assignments/consent/grants remain invalid. Resource APIs
-   must have dependent RP clients disabled first; register reviewed resources before
-   dependent RPs. The resource/RP class cannot change. Current UI lists active clients
-   only, so recovery needs recorded IDs/configuration; a disabled-client listing is
-   a small remaining usability item, not an implemented discovery/reconciliation UI.
+6. Administration lists disabled applications with a read-only **Review** action.
+   It fills saved public settings without exposing a secret or sending a mutation.
+   Compare the old snapshot settings with the operator's current record; callback
+   and logout fields use one URL per line and preserve commas literally. Submit the
+   explicit replacement only after review. Confidential clients get a new secret
+   once; old assignments/consent/grants remain invalid. Resource APIs must have
+   dependent RP clients disabled first; replace reviewed resources before dependent
+   RPs. The resource/RP class cannot change. Reassign only reviewed user access.
 
 ### Signing rotation and bounded cleanup
 

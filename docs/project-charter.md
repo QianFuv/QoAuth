@@ -2,7 +2,23 @@
 
 Recorded: 2026-10-25 (Asia/Singapore). Product name: QoAuth.
 
-## Current authorization A4
+## Current authorization A5
+
+The actual parent message beginning "已审阅 M2.2 证据和剩余工作，批准下一阶段限定收口"
+authorized administrator password reset UI, disabled-application review/prefill,
+consistent existing password policy and minimal readiness, followed by available
+second-RP, load/accessibility, compatible-version recovery and license/SBOM checks.
+It permits isolated synthetic tests and logical main commits, including necessary
+in-scope review corrections. It does not permit enterprise expansion, real accounts,
+system service/security changes, push, release or deployment. This is the parent's
+actual decision, not invented original end-user wording or a new approval wait.
+
+The bounded work is complete for parent acceptance. Final binaries are tied to
+826200d; later evidence-only documentation does not change their provenance. Native
+Linux/image verification and the source-license decision remain explicitly open.
+No further feature phase is automatically authorized or scheduled.
+
+## Historical authorization A4
 
 The parent message beginning "已审阅 M2.1 交付及 M2.2 计划，批准这个最小运维闭环的代码实现与隔离合成测试"
 authorized minimal local maintenance and logical main commits from 15e2f42. It
@@ -14,9 +30,8 @@ parent decision, not a quote attributed to the original end user.
 
 All tests/commands use isolated temporary synthetic credentials and databases.
 No real installation, persistent real access, system permission/network change,
-deployment, push or release is authorized. M2.2 completion is submitted for parent
-acceptance; remaining small product/release work is listed explicitly rather than
-silently entering another feature stage.
+deployment, push or release was authorized. M2.2 was subsequently accepted by A5;
+its bounded follow-up is recorded above.
 
 ## Historical authorization A3
 
@@ -74,7 +89,7 @@ to a future QoAuth policy service. These boundaries must be reflected in the des
 - Windows amd64 and Linux amd64 executables; Linux amd64 Docker image.
 - Work directly on `main`; one logical change per commit. No development branch
   or worktree, remote push, release, or deployment.
-- Original M0 stop: documentation/research only; subsequently superseded by A2/A3/A4 within their bounded implementation scopes.
+- Original M0 stop: documentation/research only; subsequently superseded by A2/A3/A4/A5 within their bounded implementation scopes.
 - Compare Keycloak, authentik, ZITADEL, Ory, Casdoor, Authelia, Auth0, Okta,
   Microsoft Entra, and Clerk; select representative systems for deeper analysis.
 - Cover product scenarios, feature tiers, architecture, storage, deployment,

@@ -1,6 +1,6 @@
 # Dependency choices and license risks
 
-Verified: 2026-10-25. M2.2 keeps the tested Go module graph and npm lockfile. Dependencies
+Verified: 2026-10-25. A5 keeps the tested Go module graph and npm lockfile. Dependencies
 were downloaded into project-local caches/node_modules; no system toolchain was
 installed or upgraded. The shortlist retains alternatives as research, not installed
 requirements. Only the selected set below is part of the current implementation.
@@ -8,7 +8,7 @@ requirements. Only the selected set below is part of the current implementation.
 Current scope: personal/small-team single-instance service; SQLite is the primary
 storage. Enterprise connectors and infrastructure are not prerequisites.
 
-## Selected set and M2.2 evidence
+## Selected set and final local evidence
 
 | Component | Exact selected version | License / scope |
 |---|---|---|
@@ -35,7 +35,7 @@ and [license](https://github.com/pquerna/otp/blob/v1.5.0/LICENSE), plus
 preserved in distribution records. x/crypto v0.58.0 requires Go 1.26.0; no toolchain
 upgrade was needed. OTP v1.5.0 includes the upstream complete-random-read correction.
 
-M2.2 scoped Go tests/vet/race and both amd64 builds passed. `npm ci --ignore-scripts`
+Final scoped Go tests/vet/race and both amd64 builds passed. `npm ci --ignore-scripts`
 followed by the TypeScript/Vite build passed; the full npm audit reported zero
 findings. govulncheck v1.9.0 reported zero affected symbols/imported packages in
 source and final Windows/Linux binaries, with one non-imported module advisory:
@@ -45,8 +45,9 @@ Initial stripped binaries triggered a conservative module-level report. The
 [tagged scanner](https://github.com/golang/vuln/blob/v1.9.0/internal/vulncheck/binary.go)
 explains its no-symbol fallback. Build settings now retain symbols (`-w`, no `-s`);
 both actual final artifacts pass the symbol scan. Details and runtime limitations
-are in the [checklist](plan/2026-10-25-qoauth-overall.md). M2.2 added no dependency
-and reran source/both-final-binary scans plus npm audit on 2026-10-25. This is not a security verdict.
+are in the [checklist](plan/2026-10-25-qoauth-overall.md#final-bounded-delivery-evidence-2026-10-25).
+A5 added no dependency and reran source/both-final-binary scans plus npm audit on
+2026-10-25. This is not a security verdict.
 
 The selected OP version's actual source still defaults to a legacy AES-CFB
 fallback. M1 explicitly supplies `op.NewAES256GCMCrypto` without a legacy decrypter;
@@ -58,10 +59,54 @@ These are application integration obligations, not reasons to invent cryptograph
 
 Semi's deep Button import and React 19 adapter build under the intended CSP without
 the unused full-package animation dependency's eval warning. Final bundle: about
-275.03 kB JavaScript and 52.96 kB CSS before gzip (84.56/9.06 kB compressed).
+278.09 kB JavaScript and 52.99 kB CSS before gzip (85.41/9.07 kB compressed).
 Chrome exercised the real temporary login/consent/Go RP/logout and administrator
-paths, including the M2.2 disabled-client replacement form. Full accessibility audit
+paths, including reset and lossless disabled-client review/replacement. Full accessibility audit
 and native Linux/container runs remain outstanding.
+
+## Artifact inventories and preserved notices
+
+Final local version `0.1.0-dev.826200d48959` has separate Windows/Linux SPDX 2.3 JSON,
+build metadata, original license files, notice index and SHA-256 manifests. Each
+SBOM passes the official [SPDX 2.3.1 JSON schema](https://raw.githubusercontent.com/spdx/spdx-spec/v2.3.1/schemas/spdx-schema.json)
+with PowerShell Test-Json. Schema validity is not legal clearance. SPDX metadata's
+CC0-1.0 does not choose a license for QoAuth.
+
+| Evidence scope | Windows amd64 | Linux amd64 |
+|---|---|---|
+| Modules actually recorded by `go version -m -json` | 30 | 29 |
+| SPDX packages including QoAuth, Go and frontend supplements | 43 | 42 |
+| Original-file/inline notice records | 60 | 59 |
+| Frontend components including CSS/helper supplements | 11 | 11 |
+
+The Vite [build.license](https://vite.dev/config/build-options.html#build-license)
+JSON uses emitted chunk provenance. The packager adds Semi theme CSS and Vite's
+generated modulepreload helper; it does not claim that full Vite runs in the browser.
+It compares embedded HTML/JS/CSS bytes to the actual executable. The dot-directory
+inventory is build evidence, not a publicly served UI route. No CSS URL assets were
+present. Official schema/docs and installed Vite 8.3.5 source were checked 2026-10-25.
+
+Preserved supplements include OTP/Zitadel NOTICE, JOSE json/LICENSE, SQLite/libc
+third-party aggregates, SQLite public-domain text, three attributed libc inline
+notices (Luke Champine, University of California, Poul-Henning Kamp), modernc memory
+notices, all four Semi packages' complete LICENSE files, and Go LICENSE/PATENTS/vendor
+notices. Aggregates can mention unused portions: sqlite-vec and memory logos are
+not thereby claimed linked or licensed for logo redistribution. Go h1 values remain
+module-integrity evidence, not mislabeled archive SHA-256 values.
+
+The separate build/development inventory records 273 npm entries (248 installed,
+25 optional/uninstalled) and 66 resolved Go dependency modules. Coreos belongs to
+RP/example/test scope and is absent from the product binaries. Runtime sets differ:
+Linux includes google/uuid; Windows includes go-isatty/go-strftime. Test-only libc
+GPL material and build-only MPL components are not promoted to runtime dependencies.
+Root build notices include Vite/Rolldown/TypeScript and relevant package copyright/
+third-party files. The installed Rolldown Windows binding declares MIT but has no
+root license file; that gap is explicit, and build executables are not redistributed.
+
+The source ZIP is the exact clean commit; explicit dirty-preview mode omits it.
+A container SBOM and CA-certificate provenance require the actual image, which has
+not been built. QoAuth's own license remains NOASSERTION pending a maintainer choice;
+no LICENSE file or release permission has been invented.
 
 ## Protocol and storage shortlist
 
